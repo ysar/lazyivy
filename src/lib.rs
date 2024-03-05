@@ -71,22 +71,18 @@ where
 
         // RK Logic
 
-        // Store current state separately
-        let t_now = self.t;
-        let y_now = self.y;
-
         // Store k[i] values in a vector, initialize with the first value
-        let mut k: Vec<f64> = vec![(self.f)(&t_now, &y_now); self.butcher.s + 1];
+        let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.butcher.s + 1];
 
         let mut t: f64 = 0.;
-        let mut y = y_now;
+        let mut y: f64 = 0.;
 
         self.t += self.h;
         self.y += self.h
             * (0..self.butcher.s)
                 .map(|i| {
-                    t = t_now + self.butcher.c[i] * self.h;
-                    y = y_now
+                    t = self.t + self.butcher.c[i] * self.h;
+                    y = self.y
                         + self.h
                             * (0..i)
                                 .map(|j| self.butcher.a[i * self.butcher.s + j] * k[j])
