@@ -1,11 +1,11 @@
-struct ButcherTableau {
+struct ButcherTableau<'t> {
     s: usize,
-    a: Vec<f64>,
-    b: Vec<f64>,
-    c: Vec<f64>,
+    a: &'t [f64],
+    b: &'t [f64],
+    c: &'t [f64],
 }
 
-struct RungeKuttaIntegrator<F, S>
+struct RungeKuttaIntegrator<'a, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -15,10 +15,10 @@ where
     f: F,
     stop_now: S,
     h: f64,
-    butcher: ButcherTableau,
+    butcher: ButcherTableau<'a>,
 }
 
-impl<F, S> RungeKuttaIntegrator<F, S>
+impl<F, S> RungeKuttaIntegrator<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -32,9 +32,9 @@ where
             h: h_in,
             butcher: ButcherTableau {
                 s: 1,
-                a: vec![0.],
-                b: vec![1.],
-                c: vec![0.],
+                a: &[0.],
+                b: &[1.],
+                c: &[0.],
             },
         }
     }
@@ -48,15 +48,15 @@ where
             h: h_in,
             butcher: ButcherTableau {
                 s: 2,
-                a: vec![0., 0., 2. / 3., 0.],
-                b: vec![1. / 4., 3. / 4.],
-                c: vec![0., 2. / 3.],
+                a: &[0., 0., 2. / 3., 0.],
+                b: &[1. / 4., 3. / 4.],
+                c: &[0., 2. / 3.],
             },
         }
     }
 }
 
-impl<F, S> Iterator for RungeKuttaIntegrator<F, S>
+impl<F, S> Iterator for RungeKuttaIntegrator<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -72,14 +72,14 @@ where
         // RK Logic
 
         // Store current state separately
-        let t_now = self.t.clone();
-        let y_now = self.y.clone();
+        let t_now = self.t;
+        let y_now = self.y;
 
         // Store k[i] values in a vector, initialize with the first value
         let mut k: Vec<f64> = vec![(self.f)(&t_now, &y_now); self.butcher.s + 1];
 
         let mut t: f64 = 0.;
-        let mut y = y_now.clone();
+        let mut y = y_now;
 
         self.t += self.h;
         self.y += self.h
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn test_euler_constant() {
-        let integrator = RungeKuttaIntegrator::new_euler(0., 0., |t, y| 2., |t, y| y > &5., 1.0);
+        let integrator = RungeKuttaIntegrator::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
         let result_correct = vec![(1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
         assert_eq!(result_correct, integrator.collect::<Vec<_>>());
     }
@@ -116,8 +116,8 @@ mod tests {
         let integrator = RungeKuttaIntegrator::new_ralston(
             1.,
             1.,
-            |t, y| y.tan() + 1.,
-            |t, y| t > &1.075,
+            |_, y| y.tan() + 1.,
+            |t, _| t > &1.075,
             0.025,
         );
 
