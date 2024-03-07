@@ -1,6 +1,6 @@
 # lazyivy
 
-lazyivy is a Rust crate with tools for solving initial value problems (IVPs) 
+lazyivy is a Rust library for solving initial value problems (IVPs) 
 by using Runge-Kutta integration implemented using iterators. It provides a 
 struct called `RungeKuttaIntegrator` that implements the `Iterator` trait. 
 
