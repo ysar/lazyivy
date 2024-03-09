@@ -1,19 +1,18 @@
 use crate::butcher;
 
 /// Struct for constant step size Runge-Kutta integration. Stores the integration
-/// state at every iteration. Implements [`Iterator`]. 
+/// state at every iteration. Implements [`Iterator`].
 ///
 /// # Usage:
-/// Instantiate an [`RungeKutta`] instance using coefficients 
-/// for the Euler method. `t0` and `y0` are `f64` and represent the 
-/// initial condition. Two function pointers `F` and `S` need to be passed by 
-/// by the user. `F` is the evaluation function, i.e., the right hand side 
-/// function for an ODE `dy/dt = f(t, y)`. The second function pointer `S` 
-/// defines the stop condition. E.g. "Integrate until t is smaller than 5". 
-/// `F` and `S`function pointers that implement the [`Fn`] trait. 
-/// They can also be closures that do not capture
-/// their environment, since these closures can be coerced into function
-/// pointers.
+/// Instantiate an [`RungeKutta`] instance using coefficients
+/// for the Euler method. `t0` and `y0` are `f64` and represent the
+/// initial condition. Two function pointers `F` and `P` need to be passed by
+/// by the user. `F` is the evaluation function, i.e., the right hand side
+/// function for an ODE `dy/dt = f(t, y)`. The second function pointer `P` is
+/// the predicate that dictates the stop condition.
+/// `F` and `P`function pointers that implement the [`Fn`] trait, so they
+///  can also be closures that do not capture their environment, s
+/// since these closures can be coerced into function pointers.
 /// ```
 /// // Create integrator to solve dy/dt=2 starting from t=0, y=0 until
 /// // y exceeds y=5, using constant step size of h=1.
@@ -21,9 +20,9 @@ use crate::butcher;
 /// let integrate = RungeKutta::new_euler(
 ///     0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 /// ```
-/// This will create an iterator but will not consume it since iterators 
+/// This will create an iterator but will not consume it since iterators
 /// are lazy. To consume the iterator, you have various choices.  
-/// You can collect all integration steps into a vector. 
+/// You can collect all integration steps into a vector.
 /// ```
 /// # use lazyivy::explicit_float::RungeKutta;
 /// # let integrate = RungeKutta::new_euler(
@@ -41,63 +40,61 @@ use crate::butcher;
 /// ```
 /// Or you can use any of the methods implemented within the [`Iterator`] trait
 /// e.g. `map`, `for_each`, etc.  
-/// Various Runge-Kutta methods with varying number of stages and accuracy are 
-/// provided and can be used similar to the example after instantiating with a 
+/// Various Runge-Kutta methods with varying number of stages and accuracy are
+/// provided and can be used similar to the example after instantiating with a
 /// call to `RungeKutta::new_{name-of-rk-method}`.
-
-pub struct RungeKutta<'a, F, S>
+pub struct RungeKutta<'a, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
+    P: Fn(&f64, &f64) -> bool,
 {
     t: f64,
     y: f64,
     f: F,
-    stop_now: S,
+    predicate: P,
     h: f64,
     table: butcher::ButcherTableau<'a>,
 }
 
-impl<F, S> RungeKutta<'_, F, S>
+impl<F, P> RungeKutta<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
-{   
-    
+    P: Fn(&f64, &f64) -> bool,
+{
     /// Instantiate an integrator which uses the Euler method.
-    pub fn new_euler(t0: f64, y0: f64, f_in: F, fstop: S, h_in: f64) -> Self {
+    pub fn new_euler(t0: f64, y0: f64, f_in: F, p: P, h_in: f64) -> Self {
         RungeKutta {
             t: t0,
             y: y0,
             f: f_in,
-            stop_now: fstop,
+            predicate: p,
             h: h_in,
             table: butcher::EULER_BT,
         }
     }
 
-    pub fn new_ralston(t0: f64, y0: f64, f_in: F, fstop: S, h_in: f64) -> Self {
+    pub fn new_ralston(t0: f64, y0: f64, f_in: F, fstop: P, h_in: f64) -> Self {
         RungeKutta {
             t: t0,
             y: y0,
             f: f_in,
-            stop_now: fstop,
+            predicate: fstop,
             h: h_in,
             table: butcher::RALSTON_BT,
         }
     }
 }
 
-impl<F, S> Iterator for RungeKutta<'_, F, S>
+impl<F, P> Iterator for RungeKutta<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
+    P: Fn(&f64, &f64) -> bool,
 {
     type Item = (f64, f64);
 
     fn next(&mut self) -> Option<Self::Item> {
         // Check stop condition at every iteration
-        if (self.stop_now)(&self.t, &self.y) {
+        if (self.predicate)(&self.t, &self.y) {
             return None;
         }
 
@@ -140,38 +137,31 @@ where
     }
 }
 
-pub struct RungeKuttaAdaptive<'a, F, S>
+pub struct RungeKuttaAdaptive<'a, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
+    P: Fn(&f64, &f64) -> bool,
 {
     t: f64,
     y: f64,
     f: F,
-    stop_now: S,
+    predicate: P,
     h: f64,
     err0: f64,
     table: butcher::ButcherTableauAdaptive<'a>,
 }
 
-impl<F, S> RungeKuttaAdaptive<'_, F, S>
+impl<F, P> RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
+    P: Fn(&f64, &f64) -> bool,
 {
-    pub fn new_fehlberg(
-        t0: f64, 
-        y0: f64, 
-        f_in: F, 
-        fstop: S, 
-        h_in: f64, 
-        err_in: f64
-    ) -> Self {
+    pub fn new_fehlberg(t0: f64, y0: f64, f_in: F, fstop: P, h_in: f64, err_in: f64) -> Self {
         RungeKuttaAdaptive {
             t: t0,
             y: y0,
             f: f_in,
-            stop_now: fstop,
+            predicate: fstop,
             h: h_in,
             err0: err_in,
             table: butcher::FEHLBERG_BT_ADAPTIVE,
@@ -179,10 +169,10 @@ where
     }
 }
 
-impl<F, S> RungeKuttaAdaptive<'_, F, S>
+impl<F, P> RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
+    P: Fn(&f64, &f64) -> bool,
 {
     pub fn guess_initial_step(&self) -> f64 {
         let f0 = (self.f)(&self.t, &self.y);
@@ -210,16 +200,16 @@ where
     }
 }
 
-impl<F, S> Iterator for RungeKuttaAdaptive<'_, F, S>
+impl<F, P> Iterator for RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
-    S: Fn(&f64, &f64) -> bool,
+    P: Fn(&f64, &f64) -> bool,
 {
     type Item = (f64, f64);
 
     fn next(&mut self) -> Option<Self::Item> {
         // Check stop condition at every iteration
-        if (self.stop_now)(&self.t, &self.y) {
+        if (self.predicate)(&self.t, &self.y) {
             return None;
         }
 
@@ -278,9 +268,7 @@ where
             err = (y_next - y_err).abs();
 
             h *= facmax
-                .min(facmin
-                    .max(fac * (self.err0 / err)
-                        .powf(1. / (self.table.p + 1) as f64)));
+                .min(facmin.max(fac * (self.err0 / err).powf(1. / (self.table.p + 1) as f64)));
             // println!("h = {:.3}, t = {:.3}, y = {:.3}", h, t_next, y_next);
         }
         // println!("---- Advancing to next");
@@ -298,8 +286,7 @@ mod tests {
 
     #[test]
     fn test_euler_constant() {
-        let mut integrator =
-            RungeKutta::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
+        let mut integrator = RungeKutta::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 
         let result_correct = vec![(1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
         assert_eq!(result_correct, integrator.collect::<Vec<_>>());
@@ -307,13 +294,8 @@ mod tests {
 
     #[test]
     fn test_ralston() {
-        let integrator = RungeKutta::new_ralston(
-            1.,
-            1.,
-            |_, y| y.tan() + 1.,
-            |t, _| t > &1.075,
-            0.025,
-        );
+        let integrator =
+            RungeKutta::new_ralston(1., 1., |_, y| y.tan() + 1., |t, _| t > &1.075, 0.025);
 
         let result_correct = vec![
             (1.025, 1.06686),
@@ -341,14 +323,8 @@ mod tests {
 
     #[test]
     fn test_fehlberg() {
-        let mut integrator = RungeKuttaAdaptive::new_fehlberg(
-            1.,
-            1.,
-            |t, _| t * t,
-            |t, _| t > &10.,
-            0.025,
-            0.0001,
-        );
+        let mut integrator =
+            RungeKuttaAdaptive::new_fehlberg(1., 1., |t, _| t * t, |t, _| t > &10., 0.025, 0.0001);
 
         integrator.h = integrator.guess_initial_step();
 
