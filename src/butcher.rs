@@ -26,6 +26,9 @@
 // start of the iteration. We start the stages from i=1, since a00 is undefined
 // (for any explicit Runge-Kutta Method).
 
+
+/// Struct storing Butcher tables or Runge-Kutta coefficients for different 
+/// Runge-Kutta methods that do not use a lower-order error estimator.
 pub struct ButcherTableau<'t> {
     pub s: usize,
     pub a: &'t [f64],
@@ -33,6 +36,9 @@ pub struct ButcherTableau<'t> {
     pub c: &'t [f64],
 }
 
+/// Struct storing Butcher tables or Runge-Kutta coefficients for different
+/// Runge-Kutta methods that use a lower-order error estimator. This is useful
+/// for adaptive step size.
 pub struct ButcherTableauAdaptive<'t> {
     pub s: usize,
     pub p: usize,

@@ -1,6 +1,51 @@
 use crate::butcher;
 
-pub struct RungeKuttaIntegrator<'a, F, S>
+/// Struct for constant step size Runge-Kutta integration. Stores the integration
+/// state at every iteration. Implements [`Iterator`]. 
+///
+/// # Usage:
+/// Instantiate an [`RungeKutta`] instance using coefficients 
+/// for the Euler method. `t0` and `y0` are `f64` and represent the 
+/// initial condition. Two function pointers `F` and `S` need to be passed by 
+/// by the user. `F` is the evaluation function, i.e., the right hand side 
+/// function for an ODE `dy/dt = f(t, y)`. The second function pointer `S` 
+/// defines the stop condition. E.g. "Integrate until t is smaller than 5". 
+/// `F` and `S`function pointers that implement the [`Fn`] trait. 
+/// They can also be closures that do not capture
+/// their environment, since these closures can be coerced into function
+/// pointers.
+/// ```
+/// // Create integrator to solve dy/dt=2 starting from t=0, y=0 until
+/// // y exceeds y=5, using constant step size of h=1.
+/// # use lazyivy::explicit_float::RungeKutta;
+/// let integrate = RungeKutta::new_euler(
+///     0., 0., |_, _| 2., |_, y| y > &5., 1.0);
+/// ```
+/// This will create an iterator but will not consume it since iterators 
+/// are lazy. To consume the iterator, you have various choices.  
+/// You can collect all integration steps into a vector. 
+/// ```
+/// # use lazyivy::explicit_float::RungeKutta;
+/// # let integrate = RungeKutta::new_euler(
+/// #     0., 0., |_, _| 2., |_, y| y > &5., 1.0);
+/// let result_all = integrate.collect::<Vec<_>>();
+///   // This creates a vector of tuples vec![(t0, y0), (t1, y1) ... (tN, yN)]
+/// ```
+/// Or you can iterate till the last value and only keep that.
+/// ```
+/// # use lazyivy::explicit_float::RungeKutta;
+/// # let integrate = RungeKutta::new_euler(
+/// #    0., 0., |_, _| 2., |_, y| y > &5., 1.0);
+/// let result_last = integrate.last();
+///   // result_last will be (tN, yN)
+/// ```
+/// Or you can use any of the methods implemented within the [`Iterator`] trait
+/// e.g. `map`, `for_each`, etc.  
+/// Various Runge-Kutta methods with varying number of stages and accuracy are 
+/// provided and can be used similar to the example after instantiating with a 
+/// call to `RungeKutta::new_{name-of-rk-method}`.
+
+pub struct RungeKutta<'a, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -10,38 +55,40 @@ where
     f: F,
     stop_now: S,
     h: f64,
-    butcher: butcher::ButcherTableau<'a>,
+    table: butcher::ButcherTableau<'a>,
 }
 
-impl<F, S> RungeKuttaIntegrator<'_, F, S>
+impl<F, S> RungeKutta<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
-{
+{   
+    
+    /// Instantiate an integrator which uses the Euler method.
     pub fn new_euler(t0: f64, y0: f64, f_in: F, fstop: S, h_in: f64) -> Self {
-        RungeKuttaIntegrator {
+        RungeKutta {
             t: t0,
             y: y0,
             f: f_in,
             stop_now: fstop,
             h: h_in,
-            butcher: butcher::EULER_BT,
+            table: butcher::EULER_BT,
         }
     }
 
     pub fn new_ralston(t0: f64, y0: f64, f_in: F, fstop: S, h_in: f64) -> Self {
-        RungeKuttaIntegrator {
+        RungeKutta {
             t: t0,
             y: y0,
             f: f_in,
             stop_now: fstop,
             h: h_in,
-            butcher: butcher::RALSTON_BT,
+            table: butcher::RALSTON_BT,
         }
     }
 }
 
-impl<F, S> Iterator for RungeKuttaIntegrator<'_, F, S>
+impl<F, S> Iterator for RungeKutta<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -57,7 +104,7 @@ where
         // RK Logic
 
         // Store k[i] values in a vector, initialize with the first value
-        let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.butcher.s];
+        let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.table.s];
 
         let mut t: f64 = 0.;
         let mut y: f64 = 0.;
@@ -66,16 +113,16 @@ where
 
         let mut indx: usize = 0;
 
-        self.y += self.h * self.butcher.b[0] * k[0]
+        self.y += self.h * self.table.b[0] * k[0]
             + self.h
-                * (1..self.butcher.s)
+                * (1..self.table.s)
                     .map(|i| {
                         indx = i * (i - 1) / 2;
 
-                        t = self.t + self.butcher.c[i] * self.h;
+                        t = self.t + self.table.c[i] * self.h;
                         y = self.y
                             + self.h
-                                * self.butcher.a[indx..indx + i]
+                                * self.table.a[indx..indx + i]
                                     .iter()
                                     .zip(k[..i].iter())
                                     .map(|(x, y)| x * y)
@@ -83,7 +130,7 @@ where
 
                         k[i] = (self.f)(&t, &y);
 
-                        self.butcher.b[i] * k[i]
+                        self.table.b[i] * k[i]
                     })
                     .sum::<f64>();
 
@@ -93,7 +140,7 @@ where
     }
 }
 
-pub struct RungeKuttaIntegratorAdaptive<'a, F, S>
+pub struct RungeKuttaAdaptive<'a, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -104,10 +151,10 @@ where
     stop_now: S,
     h: f64,
     err0: f64,
-    butcher: butcher::ButcherTableauAdaptive<'a>,
+    table: butcher::ButcherTableauAdaptive<'a>,
 }
 
-impl<F, S> RungeKuttaIntegratorAdaptive<'_, F, S>
+impl<F, S> RungeKuttaAdaptive<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -120,19 +167,19 @@ where
         h_in: f64, 
         err_in: f64
     ) -> Self {
-        RungeKuttaIntegratorAdaptive {
+        RungeKuttaAdaptive {
             t: t0,
             y: y0,
             f: f_in,
             stop_now: fstop,
             h: h_in,
             err0: err_in,
-            butcher: butcher::FEHLBERG_BT_ADAPTIVE,
+            table: butcher::FEHLBERG_BT_ADAPTIVE,
         }
     }
 }
 
-impl<F, S> RungeKuttaIntegratorAdaptive<'_, F, S>
+impl<F, S> RungeKuttaAdaptive<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -156,14 +203,14 @@ where
         let h1: f64 = if d1.max(d2) < 1e-15 {
             (h0 * 1.0e-3).max(1.0e-6)
         } else {
-            (0.01 / d1.max(d2)).powf(1. / (self.butcher.p + 1) as f64)
+            (0.01 / d1.max(d2)).powf(1. / (self.table.p + 1) as f64)
         };
 
         h1.min(100. * h0)
     }
 }
 
-impl<F, S> Iterator for RungeKuttaIntegratorAdaptive<'_, F, S>
+impl<F, S> Iterator for RungeKuttaAdaptive<'_, F, S>
 where
     F: Fn(&f64, &f64) -> f64,
     S: Fn(&f64, &f64) -> bool,
@@ -179,7 +226,7 @@ where
         // RK Logic
 
         // Store k[i] values in a vector, initialize with the first value
-        let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.butcher.s];
+        let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.table.s];
 
         let mut t: f64 = 0.;
         let mut y: f64 = 0.;
@@ -198,14 +245,14 @@ where
             println!("h = {:.3}, t = {:.3}, y = {:.3}", h, t_next, y_next);
 
             y_next = self.y
-                + h * self.butcher.b[0] * k[0]
-                + h * (1..self.butcher.s)
+                + h * self.table.b[0] * k[0]
+                + h * (1..self.table.s)
                     .map(|i| {
                         indx = i * (i - 1) / 2;
 
-                        t = self.t + self.butcher.c[i] * h;
+                        t = self.t + self.table.c[i] * h;
                         y = self.y
-                            + h * self.butcher.a[indx..indx + i]
+                            + h * self.table.a[indx..indx + i]
                                 .iter()
                                 .zip(k[..i].iter())
                                 .map(|(x, y)| x * y)
@@ -213,7 +260,7 @@ where
 
                         k[i] = (self.f)(&t, &y);
 
-                        self.butcher.b[i] * k[i]
+                        self.table.b[i] * k[i]
                     })
                     .sum::<f64>();
 
@@ -221,7 +268,7 @@ where
 
             y_err = self.y
                 + h * self
-                    .butcher
+                    .table
                     .b2
                     .iter()
                     .zip(k.iter())
@@ -233,7 +280,7 @@ where
             h *= facmax
                 .min(facmin
                     .max(fac * (self.err0 / err)
-                        .powf(1. / (self.butcher.p + 1) as f64)));
+                        .powf(1. / (self.table.p + 1) as f64)));
             // println!("h = {:.3}, t = {:.3}, y = {:.3}", h, t_next, y_next);
         }
         // println!("---- Advancing to next");
@@ -252,7 +299,7 @@ mod tests {
     #[test]
     fn test_euler_constant() {
         let mut integrator =
-            RungeKuttaIntegrator::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
+            RungeKutta::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 
         let result_correct = vec![(1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
         assert_eq!(result_correct, integrator.collect::<Vec<_>>());
@@ -260,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_ralston() {
-        let integrator = RungeKuttaIntegrator::new_ralston(
+        let integrator = RungeKutta::new_ralston(
             1.,
             1.,
             |_, y| y.tan() + 1.,
@@ -294,7 +341,7 @@ mod tests {
 
     #[test]
     fn test_fehlberg() {
-        let mut integrator = RungeKuttaIntegratorAdaptive::new_fehlberg(
+        let mut integrator = RungeKuttaAdaptive::new_fehlberg(
             1.,
             1.,
             |t, _| t * t,
