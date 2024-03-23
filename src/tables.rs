@@ -33,8 +33,8 @@ pub struct ButcherTableauAdaptive<'t> {
     /// The `c` vector in a Runge-Kutta Butcher table. It is one-dimensional.
     pub c: &'t [f64],
 
-    /// The `b*` coefficients in a Runge-Kutta Butcher table. These correspond 
-    /// to a lower order accurate scheme to be used in error-estimation and 
+    /// The `b*` coefficients in a Runge-Kutta Butcher table. These correspond
+    /// to a lower order accurate scheme to be used in error-estimation and
     /// adaptive step-size control.
     pub b2: &'t [f64], // b* in literature
 }

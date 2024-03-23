@@ -1,5 +1,32 @@
 use crate::aux;
 use crate::tables;
+use paste::paste;
+
+macro_rules! impl_new_rk {
+    ($name:ident) => {
+        paste! {
+            #[doc="Instantiate an ODE integrator (single variable) which uses the " $name:camel " method."]
+            pub fn [<new_ $name>] (t: f64, y: f64, f: F, predicate: P, h: f64) -> Self {
+                RungeKutta {
+                    t, y, f, predicate, h, table: tables::[<$name:upper _BT>],
+                }
+            }
+        }
+    }
+}
+
+macro_rules! impl_new_rk_adaptive {
+    ($name:ident) => {
+        paste! {
+            #[doc="Instantiate an ODE integrator (single variable) which uses the " $name:camel " method with adaptive step-size."]
+            pub fn [<new_ $name>] (t: f64, y: f64, f: F, predicate: P, h: f64, err0: f64) -> Self {
+                RungeKuttaAdaptive {
+                    t, y, f, predicate, h, err0, table: tables::[<$name:upper _BT_ADAPTIVE>],
+                }
+            }
+        }
+    }
+}
 
 /// Struct for constant step size Runge-Kutta integration. Stores the integration
 /// state at every iteration. Implements [`Iterator`].
@@ -62,29 +89,8 @@ where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
 {
-    /// Instantiate an integration using the Euler method
-    pub fn new_euler(t0: f64, y0: f64, f_in: F, p: P, h_in: f64) -> Self {
-        RungeKutta {
-            t: t0,
-            y: y0,
-            f: f_in,
-            predicate: p,
-            h: h_in,
-            table: tables::EULER_BT,
-        }
-    }
-
-    /// Instantiate an integration using the Ralston method
-    pub fn new_ralston(t0: f64, y0: f64, f_in: F, fstop: P, h_in: f64) -> Self {
-        RungeKutta {
-            t: t0,
-            y: y0,
-            f: f_in,
-            predicate: fstop,
-            h: h_in,
-            table: tables::RALSTON_BT,
-        }
-    }
+    impl_new_rk!(euler);
+    impl_new_rk!(ralston);
 }
 
 impl<F, P> Iterator for RungeKutta<'_, F, P>
@@ -135,7 +141,7 @@ where
 }
 
 /// Struct for adaptive step-size Runge-Kutta integration. Makes use of a lower
-/// order accurate scheme to calculate the error and scales the step size 
+/// order accurate scheme to calculate the error and scales the step size
 /// accordingly.
 pub struct RungeKuttaAdaptive<'a, F, P>
 where
@@ -155,26 +161,16 @@ impl<F, P> RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
-{   
-    /// Instantiates an integration using the adaptive Fehlberg method
-    pub fn new_fehlberg(t0: f64, y0: f64, f_in: F, fstop: P, h_in: f64, err_in: f64) -> Self {
-        RungeKuttaAdaptive {
-            t: t0,
-            y: y0,
-            f: f_in,
-            predicate: fstop,
-            h: h_in,
-            err0: err_in,
-            table: tables::FEHLBERG_BT_ADAPTIVE,
-        }
-    }
+{
+    impl_new_rk_adaptive!(fehlberg);
+    impl_new_rk_adaptive!(hueneuler);
 }
 
 impl<F, P> RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
-{   
+{
     /// Provides an initial guess for adaptive step size algorithms. Follows
     /// the algorithm written in the book by Harrier, Nørsett, Wanner.
     pub fn guess_initial_step(&self) -> f64 {

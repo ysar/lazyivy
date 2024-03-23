@@ -17,7 +17,7 @@ pub mod aux;
 /// The Butcher table contains the `a_ij` matrix and the `c_i` and `b_j` vector
 /// coefficients that specify a particular Runge-Kutta method.  
 ///
-/// It is usually written like this - 
+/// It is usually written like this -
 /// ```
 /// ---------------------------------------------
 /// c0     | -
@@ -31,9 +31,9 @@ pub mod aux;
 /// ---------------------------------------------
 /// ```
 /// By convention the math community uses 1-based indexing to mark the a_ij
-/// matrix. Note that we have used zero-based indexing above and in the 
+/// matrix. Note that we have used zero-based indexing above and in the
 /// implementation.  
-/// 
+///
 /// For adaptive Runge-Kutta methods the lower-order coefficients are also
 /// provided for estimating the error
 /// ```
@@ -45,7 +45,7 @@ pub mod aux;
 /// with indexing logic `idx = i(i-1)/2 + j`.
 ///
 /// In the Runge-Kutta iteration, we initialize `k(i=0)` with the state at the
-/// start of the iteration. We start the stages from i=1, since `a00` is 
+/// start of the iteration. We start the stages from i=1, since `a00` is
 /// undefined for any explicit Runge-Kutta Method.
 pub mod tables;
 

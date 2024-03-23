@@ -1,4 +1,4 @@
-use ndarray::{Array1};
+use ndarray::Array1;
 
 /// Take the product between elements of two Rust arrays and then sum the
 /// products.

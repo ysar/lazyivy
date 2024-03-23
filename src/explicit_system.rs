@@ -1,6 +1,20 @@
 use crate::aux;
 use crate::tables;
-use ndarray::{Array1};
+use ndarray::Array1;
+use paste::paste;
+
+macro_rules! impl_new_rksystem {
+    ($name:ident) => {
+        paste! {
+            #[doc="Instantiate an ODE system integrator which uses the " $name:camel " method."]
+            pub fn [<new_ $name>] (t: f64, y: Array1<f64>, f: F, predicate: P, h: f64) -> Self {
+                RungeKuttaSystem {
+                    t, y, f, predicate, h, table: tables::[<$name:upper _BT>],
+                }
+            }
+        }
+    };
+}
 
 /// Struct for constant step size Runge-Kutta integration. Stores the integration
 /// state at every iteration. Implements [`Iterator`].
@@ -22,31 +36,8 @@ where
     F: Fn(&f64, &Array1<f64>) -> Array1<f64>,
     P: Fn(&f64, &Array1<f64>) -> bool,
 {
-    /// Instantiate an integrator which uses the Euler method for a system 
-    /// of ODEs.
-    pub fn new_euler(t0: f64, y0: Array1<f64>, f_in: F, p: P, h_in: f64) -> Self {
-        RungeKuttaSystem {
-            t: t0,
-            y: y0,
-            f: f_in,
-            predicate: p,
-            h: h_in,
-            table: tables::EULER_BT,
-        }
-    }
-
-    /// Instantiate an integrator which uses the Euler method for a system 
-    /// of ODEs.
-    pub fn new_ralston(t0: f64, y0: Array1<f64>, f_in: F, fstop: P, h_in: f64) -> Self {
-        RungeKuttaSystem {
-            t: t0,
-            y: y0,
-            f: f_in,
-            predicate: fstop,
-            h: h_in,
-            table: tables::RALSTON_BT,
-        }
-    }
+    impl_new_rksystem!(euler);
+    impl_new_rksystem!(ralston);
 }
 
 impl<F, P> Iterator for RungeKuttaSystem<'_, F, P>
@@ -229,16 +220,16 @@ mod tests {
 
     #[test]
     fn test_euler_system() {
-
         let y0 = Array1::<f64>::zeros(3);
 
         let mut integrator = RungeKuttaSystem::new_euler(
             0.,
-            y0, 
-            |_, _| Array1::<f64>::from_elem(3, 2.), 
-            |t, _| t > &5., 
-            1.0);
-        
+            y0,
+            |_, _| Array1::<f64>::from_elem(3, 2.),
+            |t, _| t > &5.,
+            1.0,
+        );
+
         for item in integrator {
             println!("{:?}", item);
         }
@@ -246,16 +237,16 @@ mod tests {
 
     #[test]
     fn test_ralston_system() {
-
         let y0 = Array1::<f64>::zeros(3) + 1.;
 
         let mut integrator = RungeKuttaSystem::new_ralston(
             1.,
-            y0, 
-            |_, y| { y.map(|x| x.tan()) + 1.} , 
-            |t, _| t > &1.075, 
-            0.025);
-        
+            y0,
+            |_, y| y.map(|x| x.tan()) + 1.,
+            |t, _| t > &1.075,
+            0.025,
+        );
+
         for item in integrator {
             println!("{:?}", item);
         }
