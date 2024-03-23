@@ -1,4 +1,5 @@
-use crate::butcher;
+use crate::aux;
+use crate::tables;
 
 /// Struct for constant step size Runge-Kutta integration. Stores the integration
 /// state at every iteration. Implements [`Iterator`].
@@ -16,7 +17,7 @@ use crate::butcher;
 /// ```
 /// // Create integrator to solve dy/dt=2 starting from t=0, y=0 until
 /// // y exceeds y=5, using constant step size of h=1.
-/// # use lazyivy::explicit_float::RungeKutta;
+/// # use lazyivy::explicit_single::RungeKutta;
 /// let integrate = RungeKutta::new_euler(
 ///     0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 /// ```
@@ -24,7 +25,7 @@ use crate::butcher;
 /// are lazy. To consume the iterator, you have various choices.  
 /// You can collect all integration steps into a vector.
 /// ```
-/// # use lazyivy::explicit_float::RungeKutta;
+/// # use lazyivy::explicit_single::RungeKutta;
 /// # let integrate = RungeKutta::new_euler(
 /// #     0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 /// let result_all = integrate.collect::<Vec<_>>();
@@ -32,7 +33,7 @@ use crate::butcher;
 /// ```
 /// Or you can iterate till the last value and only keep that.
 /// ```
-/// # use lazyivy::explicit_float::RungeKutta;
+/// # use lazyivy::explicit_single::RungeKutta;
 /// # let integrate = RungeKutta::new_euler(
 /// #    0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 /// let result_last = integrate.last();
@@ -53,7 +54,7 @@ where
     f: F,
     predicate: P,
     h: f64,
-    table: butcher::ButcherTableau<'a>,
+    table: tables::ButcherTableau<'a>,
 }
 
 impl<F, P> RungeKutta<'_, F, P>
@@ -69,7 +70,7 @@ where
             f: f_in,
             predicate: p,
             h: h_in,
-            table: butcher::EULER_BT,
+            table: tables::EULER_BT,
         }
     }
 
@@ -80,7 +81,7 @@ where
             f: f_in,
             predicate: fstop,
             h: h_in,
-            table: butcher::RALSTON_BT,
+            table: tables::RALSTON_BT,
         }
     }
 }
@@ -118,12 +119,7 @@ where
 
                         t = self.t + self.table.c[i] * self.h;
                         y = self.y
-                            + self.h
-                                * self.table.a[indx..indx + i]
-                                    .iter()
-                                    .zip(k[..i].iter())
-                                    .map(|(x, y)| x * y)
-                                    .sum::<f64>();
+                            + self.h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
 
                         k[i] = (self.f)(&t, &y);
 
@@ -148,7 +144,7 @@ where
     predicate: P,
     h: f64,
     err0: f64,
-    table: butcher::ButcherTableauAdaptive<'a>,
+    table: tables::ButcherTableauAdaptive<'a>,
 }
 
 impl<F, P> RungeKuttaAdaptive<'_, F, P>
@@ -164,7 +160,7 @@ where
             predicate: fstop,
             h: h_in,
             err0: err_in,
-            table: butcher::FEHLBERG_BT_ADAPTIVE,
+            table: tables::FEHLBERG_BT_ADAPTIVE,
         }
     }
 }
@@ -241,12 +237,7 @@ where
                         indx = i * (i - 1) / 2;
 
                         t = self.t + self.table.c[i] * h;
-                        y = self.y
-                            + h * self.table.a[indx..indx + i]
-                                .iter()
-                                .zip(k[..i].iter())
-                                .map(|(x, y)| x * y)
-                                .sum::<f64>();
+                        y = self.y + h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
 
                         k[i] = (self.f)(&t, &y);
 
@@ -256,14 +247,7 @@ where
 
             t_next = self.t + h;
 
-            y_err = self.y
-                + h * self
-                    .table
-                    .b2
-                    .iter()
-                    .zip(k.iter())
-                    .map(|(x, y)| x * y)
-                    .sum::<f64>();
+            y_err = self.y + h * aux::sum_product(&self.table.b2, &k);
 
             err = (y_next - y_err).abs();
 
@@ -331,28 +315,5 @@ mod tests {
         for iteration in integrator {
             // println!("{:?}", iteration);
         }
-
-        // let result_correct = vec![
-        //     (1.025, 1.06697),
-        //     (1.05, 1.141636),
-        //     (1.075, 1.22822),
-        //     (1.1, 1.33786),
-        // ];
-
-        // let result = integrator.collect::<Vec<_>>();
-
-        // let not_equal_vals = result_correct
-        //     .iter()
-        //     .zip(result.iter())
-        //     .filter(|&(x, y)| (x.1 - y.1).abs() > 0.001)
-        //     .count();
-
-        // assert!(
-        //     not_equal_vals == 0,
-        //     "{:?}\n{:?}\n Not equal vals ={:?}",
-        //     result,
-        //     result_correct,
-        //     not_equal_vals
-        // );
     }
 }
