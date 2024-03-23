@@ -62,7 +62,7 @@ where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
 {
-    /// Instantiate an integrator which uses the Euler method.
+    /// Instantiate an integration using the Euler method
     pub fn new_euler(t0: f64, y0: f64, f_in: F, p: P, h_in: f64) -> Self {
         RungeKutta {
             t: t0,
@@ -74,6 +74,7 @@ where
         }
     }
 
+    /// Instantiate an integration using the Ralston method
     pub fn new_ralston(t0: f64, y0: f64, f_in: F, fstop: P, h_in: f64) -> Self {
         RungeKutta {
             t: t0,
@@ -133,6 +134,9 @@ where
     }
 }
 
+/// Struct for adaptive step-size Runge-Kutta integration. Makes use of a lower
+/// order accurate scheme to calculate the error and scales the step size 
+/// accordingly.
 pub struct RungeKuttaAdaptive<'a, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
@@ -151,7 +155,8 @@ impl<F, P> RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
-{
+{   
+    /// Instantiates an integration using the adaptive Fehlberg method
     pub fn new_fehlberg(t0: f64, y0: f64, f_in: F, fstop: P, h_in: f64, err_in: f64) -> Self {
         RungeKuttaAdaptive {
             t: t0,
@@ -169,7 +174,9 @@ impl<F, P> RungeKuttaAdaptive<'_, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
-{
+{   
+    /// Provides an initial guess for adaptive step size algorithms. Follows
+    /// the algorithm written in the book by Harrier, Nørsett, Wanner.
     pub fn guess_initial_step(&self) -> f64 {
         let f0 = (self.f)(&self.t, &self.y);
         let d0 = (self.y / self.err0).abs();
