@@ -223,9 +223,9 @@ where
         let min_scale_factor: f64 = 0.1;
         let max_scale_factor: f64 = 2.;
 
-        let mut count: usize = 0;
+        // let mut count: usize = 0;
         while error_norm > 1. {
-            count += 1;
+            // count += 1;
 
             sum.fill(0.);
 
@@ -270,6 +270,13 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
 
+    fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
+        Array::from_vec(vec![
+            1. + y[0].powi(2) * y[1] - 4. * y[0],
+            3. * y[0] - y[0].powi(2) * y[1],
+        ])
+    }
+
     #[test]
     fn test_euler_system() {
         let y0 = Array1::<f64>::zeros(3);
@@ -306,12 +313,6 @@ mod tests {
 
     #[test]
     fn test_fehlberg_system() {
-        fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
-            Array::from_vec(vec![
-                1. + y[0].powi(2) * y[1] - 4. * y[0],
-                3. * y[0] - y[0].powi(2) * y[1],
-            ])
-        }
 
         let t0: f64 = 0.;
         let y0 = Array::from_vec(vec![1.5, 3.]);
@@ -342,12 +343,6 @@ mod tests {
 
     #[test]
     fn test_brusselator_adaptive() {
-        fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
-            Array::from_vec(vec![
-                1. + y[0].powi(2) * y[1] - 4. * y[0],
-                3. * y[0] - y[0].powi(2) * y[1],
-            ])
-        }
 
         let t0: f64 = 0.;
         let y0 = Array::from_vec(vec![1.5, 3.]);
@@ -380,12 +375,6 @@ mod tests {
 
     #[test]
     fn test_brusselator_fixed() {
-        fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
-            Array::from_vec(vec![
-                1. + y[0].powi(2) * y[1] - 4. * y[0],
-                3. * y[0] - y[0].powi(2) * y[1],
-            ])
-        }
 
         let t0: f64 = 0.;
         let y0 = Array::from_vec(vec![1.5, 3.]);
