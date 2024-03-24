@@ -19,38 +19,45 @@ macro_rules! impl_new_rk_adaptive {
     ($name:ident) => {
         paste! {
             #[doc="Instantiate an ODE integrator (single variable) which uses the " $name:camel " method with adaptive step-size."]
-            pub fn [<new_ $name>] (t: f64, y: f64, f: F, predicate: P, h: f64, err0: f64) -> Self {
+            pub fn [<new_ $name>] (
+                t: f64,
+                y: f64,
+                f: F,
+                predicate: P,
+                h: f64,
+                relative_tol: f64,
+                absolute_tol: f64
+            ) -> Self {
                 RungeKuttaAdaptive {
-                    t, y, f, predicate, h, err0, table: tables::[<$name:upper _BT_ADAPTIVE>],
+                    t, y, f, predicate, h, relative_tol, absolute_tol,
+                    table: tables::[<$name:upper _BT_ADAPTIVE>],
                 }
             }
         }
     }
 }
 
-/// Struct for constant step size Runge-Kutta integration. Stores the integration
-/// state at every iteration. Implements [`Iterator`].
+/// Struct for constant step size Runge-Kutta integration. Stores the integration state at every
+/// iteration. Implements [`Iterator`].
 ///
 /// # Usage:
-/// Instantiate an [`RungeKutta`] instance using coefficients
-/// for the Euler method. `t0` and `y0` are `f64` and represent the
-/// initial condition. Two function pointers `F` and `P` need to be passed by
-/// by the user. `F` is the evaluation function, i.e., the right hand side
-/// function for an ODE `dy/dt = f(t, y)`. The second function pointer `P` is
-/// the predicate that dictates the stop condition.
-/// `F` and `P`function pointers that implement the [`Fn`] trait, so they
-///  can also be closures that do not capture their environment, s
-/// since these closures can be coerced into function pointers.
+/// Instantiate an [`RungeKutta`] instance using coefficients for the Euler method. `t0` and `y0`
+/// are `f64` and represent the initial condition. Two function pointers `F` and `P` need to be
+/// passed by by the user. `F` is the evaluation function, i.e., the right hand side function for
+/// an ODE `dy/dt = f(t, y)`. The second function pointer `P` is the predicate that dictates the
+/// stop condition. `F` and `P`function pointers that implement the [`Fn`] trait, so they can also
+/// be closures that do not capture their environment, since these closures can be coerced into
+/// function pointers.
 /// ```
-/// // Create integrator to solve dy/dt=2 starting from t=0, y=0 until
-/// // y exceeds y=5, using constant step size of h=1.
+/// // Create integrator to solve dy/dt=2 starting from t=0, y=0 until y exceeds y=5, using a
+/// // constant step size of h=1.
 /// # use lazyivy::explicit_single::RungeKutta;
 /// let integrate = RungeKutta::new_euler(
 ///     0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 /// ```
-/// This will create an iterator but will not consume it since iterators
-/// are lazy. To consume the iterator, you have various choices.  
-/// You can collect all integration steps into a vector.
+/// This will create an iterator but will not consume it since iterators are lazy. To consume the
+/// iterator, you have various choices. For example, you can collect all integration steps into a
+/// vector.
 /// ```
 /// # use lazyivy::explicit_single::RungeKutta;
 /// # let integrate = RungeKutta::new_euler(
@@ -58,7 +65,7 @@ macro_rules! impl_new_rk_adaptive {
 /// let result_all = integrate.collect::<Vec<_>>();
 ///   // This creates a vector of tuples vec![(t0, y0), (t1, y1) ... (tN, yN)]
 /// ```
-/// Or you can iterate till the last value and only keep that.
+/// Or, you can consume the iterator and keep only the last value.
 /// ```
 /// # use lazyivy::explicit_single::RungeKutta;
 /// # let integrate = RungeKutta::new_euler(
@@ -66,11 +73,10 @@ macro_rules! impl_new_rk_adaptive {
 /// let result_last = integrate.last();
 ///   // result_last will be (tN, yN)
 /// ```
-/// Or you can use any of the methods implemented within the [`Iterator`] trait
-/// e.g. `map`, `for_each`, etc.  
-/// Various Runge-Kutta methods with varying number of stages and accuracy are
-/// provided and can be used similar to the example after instantiating with a
-/// call to `RungeKutta::new_{name-of-rk-method}`.
+/// Or you can use any of the methods implemented within the [`Iterator`] trait e.g. `map`,
+/// `for_each`, etc. Various Runge-Kutta methods with varying number of stages and accuracy are
+/// provided and can be used similar to the example after instantiating with a call to
+/// `RungeKutta::new_{name-of-rk-method}`.
 pub struct RungeKutta<'a, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
@@ -111,38 +117,34 @@ where
         // Store k[i] values in a vector, initialize with the first value
         let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.table.s];
 
+        #[allow(unused_assignments)]
         let mut t: f64 = 0.;
+
+        #[allow(unused_assignments)]
         let mut y: f64 = 0.;
 
-        // See butcher.rs for note on indexing logic for Butcher table
-
+        #[allow(unused_assignments)]
         let mut indx: usize = 0;
 
-        self.y += self.h * self.table.b[0] * k[0]
-            + self.h
-                * (1..self.table.s)
-                    .map(|i| {
-                        indx = i * (i - 1) / 2;
+        let mut sum: f64 = 0.;
 
-                        t = self.t + self.table.c[i] * self.h;
-                        y = self.y
-                            + self.h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
-
-                        k[i] = (self.f)(&t, &y);
-
-                        self.table.b[i] * k[i]
-                    })
-                    .sum::<f64>();
+        for i in 1..self.table.s {
+            indx = i * (i - 1) / 2;
+            t = self.t + self.table.c[i] * self.h;
+            y = self.y + self.h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
+            k[i] = (self.f)(&t, &y);
+            sum += self.table.b[i] * k[i];
+        }
 
         self.t += self.h;
+        self.y += self.h * self.table.b[0] * k[0] + self.h * sum;
 
         Some((self.t, self.y))
     }
 }
 
-/// Struct for adaptive step-size Runge-Kutta integration. Makes use of a lower
-/// order accurate scheme to calculate the error and scales the step size
-/// accordingly.
+/// Struct for adaptive step-size Runge-Kutta integration. Makes use of a lower order accurate
+/// scheme to calculate the error and scales the step size accordingly.
 pub struct RungeKuttaAdaptive<'a, F, P>
 where
     F: Fn(&f64, &f64) -> f64,
@@ -153,7 +155,8 @@ where
     f: F,
     predicate: P,
     h: f64,
-    err0: f64,
+    relative_tol: f64,
+    absolute_tol: f64,
     table: tables::ButcherTableauAdaptive<'a>,
 }
 
@@ -171,12 +174,18 @@ where
     F: Fn(&f64, &f64) -> f64,
     P: Fn(&f64, &f64) -> bool,
 {
-    /// Provides an initial guess for adaptive step size algorithms. Follows
-    /// the algorithm written in the book by Harrier, Nørsett, Wanner.
+    /// Calculates the norm || (y0 - y1) || as defined in Harrier, Nørsett, Wanner.
+    fn calc_error_norm(&self, y0: &f64, y1: &f64) -> f64 {
+        let tolerance = self.absolute_tol + y0.abs().max(y1.abs()) * self.relative_tol;
+        ((y0 - y1) / tolerance).abs()
+    }
+
+    /// Provides an initial guess for adaptive step size algorithms. Follows the algorithm written
+    /// in the book by Harrier, Nørsett, Wanner.
     pub fn guess_initial_step(&self) -> f64 {
         let f0 = (self.f)(&self.t, &self.y);
-        let d0 = (self.y / self.err0).abs();
-        let d1 = (f0 / self.err0).abs();
+        let d0 = self.calc_error_norm(&self.y, &0.);
+        let d1 = self.calc_error_norm(&f0, &0.);
 
         let h0: f64 = if d0 < 1.0e-5 || d1 < 1.0e-5 {
             1.0e-6
@@ -187,7 +196,7 @@ where
         let y1 = self.y + h0 * f0;
         let f1 = (self.f)(&(self.t + h0), &y1);
 
-        let d2 = ((f1 - f0) / self.err0).abs() / h0;
+        let d2 = self.calc_error_norm(&f1, &f0) / h0;
 
         let h1: f64 = if d1.max(d2) < 1e-15 {
             (h0 * 1.0e-3).max(1.0e-6)
@@ -217,46 +226,45 @@ where
         // Store k[i] values in a vector, initialize with the first value
         let mut k: Vec<f64> = vec![(self.f)(&self.t, &self.y); self.table.s];
 
+        #[allow(unused_assignments)]
         let mut t: f64 = 0.;
+
+        #[allow(unused_assignments)]
         let mut y: f64 = 0.;
+
+        #[allow(unused_assignments)]
         let mut indx: usize = 0;
+
         let mut h = self.h;
-        let mut err = self.err0 + 1.;
+        let mut err = 2.;
         let mut y_next: f64 = 0.;
-        let mut y_err: f64;
+        let mut y_lower: f64;
         let mut t_next: f64 = 0.;
 
         let facmax: f64 = 2.;
         let fac: f64 = 0.9;
         let facmin: f64 = 0.;
 
-        while err > self.err0 {
-            println!("h = {:.3}, t = {:.3}, y = {:.3}", h, t_next, y_next);
+        let mut sum: f64;
 
-            y_next = self.y
-                + h * self.table.b[0] * k[0]
-                + h * (1..self.table.s)
-                    .map(|i| {
-                        indx = i * (i - 1) / 2;
+        while err > 1. {
+            sum = 0.;
 
-                        t = self.t + self.table.c[i] * h;
-                        y = self.y + h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
-
-                        k[i] = (self.f)(&t, &y);
-
-                        self.table.b[i] * k[i]
-                    })
-                    .sum::<f64>();
+            for i in 1..self.table.s {
+                indx = i * (i - 1) / 2;
+                t = self.t + self.table.c[i] * h;
+                y = self.y + h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
+                k[i] = (self.f)(&t, &y);
+                sum += self.table.b[i] * k[i];
+            }
 
             t_next = self.t + h;
+            y_next = self.y + h * self.table.b[0] * k[0] + h * sum;
+            y_lower = self.y + h * aux::sum_product(&self.table.b2, &k);
 
-            y_err = self.y + h * aux::sum_product(&self.table.b2, &k);
+            err = self.calc_error_norm(&y_next, &y_lower);
 
-            err = (y_next - y_err).abs();
-
-            h *= facmax
-                .min(facmin.max(fac * (self.err0 / err).powf(1. / (self.table.p + 1) as f64)));
-            // println!("h = {:.3}, t = {:.3}, y = {:.3}", h, t_next, y_next);
+            h *= facmax.min(facmin.max(fac * (1. / err).powf(1. / (self.table.p) as f64)));
         }
         // println!("---- Advancing to next");
         self.h = h;
@@ -309,14 +317,21 @@ mod tests {
     }
 
     #[test]
-    fn test_fehlberg() {
-        let mut integrator =
-            RungeKuttaAdaptive::new_fehlberg(1., 1., |t, _| t * t, |t, _| t > &10., 0.025, 0.0001);
+    fn test_fehlberg_single() {
+        let mut integrator = RungeKuttaAdaptive::new_fehlberg(
+            1.,
+            1.,
+            |t, _| t * t,
+            |t, _| t > &10.,
+            0.025,
+            0.0001,
+            0.0001,
+        );
 
         integrator.h = integrator.guess_initial_step();
 
         for iteration in integrator {
-            // println!("{:?}", iteration);
+            println!("{:?}", iteration);
         }
     }
 }

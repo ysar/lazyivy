@@ -1,5 +1,5 @@
-/// Struct storing Butcher tables or Runge-Kutta coefficients for different
-/// Runge-Kutta methods that do not use a lower-order error estimator.
+/// Struct storing Butcher tables or Runge-Kutta coefficients for different Runge-Kutta methods that
+/// do not use a lower-order error estimator.
 pub struct ButcherTableau<'t> {
     /// Number of Runge-Kutta stages
     pub s: usize,
@@ -14,9 +14,8 @@ pub struct ButcherTableau<'t> {
     pub c: &'t [f64],
 }
 
-/// Struct storing Butcher tables or Runge-Kutta coefficients for different
-/// Runge-Kutta methods that use a lower-order error estimator. This is useful
-/// for adaptive step size.
+/// Struct storing Butcher tables or Runge-Kutta coefficients for different Runge-Kutta methods that
+/// use a lower-order error estimator. This is useful for adaptive step size.
 pub struct ButcherTableauAdaptive<'t> {
     /// Number of Runge-Kutta stages
     pub s: usize,
@@ -68,9 +67,9 @@ pub const FEHLBERG_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive 
         439./216., -8., 3680./513., -845./4104.,
         -8./27., 2., -3544./2565., 1859./4104., -11./40.,
         ],
-    b: &[16./135., 0., 6656./12825., 28561./56430., -9./50., 2./55.],
+    b: &[25./216., 0., 1408./2565., 2197./4104., -0.2, 0.],
     c: &[0., 0.25, 3./8., 12./13., 1., 0.5],
-    b2: &[25./216., 0., 1408./2565., 2197./4104., -0.2, 0.]
+    b2: &[16./135., 0., 6656./12825., 28561./56430., -9./50., 2./55.],
 };
 
 /// Runge-Kutta coefficients table for the adaptive Hueneuler method.
@@ -82,4 +81,22 @@ pub const HUENEULER_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive
     b: &[0.5, 0.5],
     c: &[0., 1.],
     b2: &[1., 0.]
+};
+
+/// Runge-Kutta coefficients table for the adaptive Dormand-Prince method.
+#[rustfmt::skip]
+pub const DORMANDPRINCE_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive {
+    s: 7,
+    p: 5,
+    a: &[
+        0.2,
+        3./40., 9./40.,
+        44./45., -56./15., 32./9.,
+        19372./6561., -25360./2187., 64448./6561., -212./729.,
+        9017./3168., -355./33., 46732./5247., 49./176., -5103./18656.,
+        35./384., 0., 500./1113., 125./192., -2187./6784., 11./84.,
+        ],
+    b: &[35./384., 0., 500./1113., 125./192., -2187./6784., 11./84., 0.],
+    c: &[0., 0.2, 3./10., 0.8, 8./9., 1., 1.],
+    b2: &[5179./57600., 0., 7571./16695., 393./640., -92097./339200., 187./2100., 1./40.],
 };
