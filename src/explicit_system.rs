@@ -143,6 +143,11 @@ where
     impl_new_rk_system_adaptive!(Hueneuler);
     impl_new_rk_system_adaptive!(DormandPrince);
 
+    /// Set step-size.
+    pub fn set_step_size(&mut self, h: &f64) {
+        self.h = *h;
+    }
+
     /// Calculates the norm || (y0 - y1) || as defined in Harrier, Nørsett, Wanner.
     fn calc_error_norm(&self, y0: &Array1<f64>, y1: &Array1<f64>) -> f64 {
         let mut tolerance = Array1::<f64>::zeros(self._num_variables);
@@ -200,6 +205,7 @@ where
         // Store k[i] values in a vector, initialize with the first value
         let mut k: Vec<Array1<f64>> = vec![(self.f)(&self.t, &self.y); self.table.s];
 
+        // For now, leave these here.  Need to move these allocations out of next.
         #[allow(unused_assignments)]
         let mut t: f64 = 0.;
 
@@ -223,10 +229,7 @@ where
         let min_scale_factor: f64 = 0.1;
         let max_scale_factor: f64 = 2.;
 
-        // let mut count: usize = 0;
         while error_norm > 1. {
-            // count += 1;
-
             sum.fill(0.);
 
             for i in 1..self.table.s {
@@ -240,7 +243,7 @@ where
 
             t_next = self.t + h;
             y_next = &self.y + h * self.table.b[0] * &k[0] + h * &sum;
-            y_lower = &self.y + h * aux::sum_product_array(&self.table.b2, &k);
+            y_lower = &self.y + h * aux::sum_product_array(self.table.b2, &k);
 
             error_norm = self.calc_error_norm(&y_next, &y_lower);
 
@@ -248,13 +251,8 @@ where
                 min_scale_factor
                     .max(scale_factor * (1. / error_norm).powf(1. / (self.table.p) as f64)),
             );
-
-            // println!(
-            //     "count = {:}, h = {:?}, t = {:.4}, y = {:.4}, norm = {:.4}, scale = {:.4}",
-            //     count, h, t_next, y_next, error_norm, _tmp
-            // );
         }
-        // println!("---- Advancing to next");
+
         self.h = h;
         self.y = y_next;
         self.t = t_next;
@@ -266,11 +264,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::{s, Array, Array1};
+    use ndarray::{Array, Array1};
     use std::fs::File;
     use std::io::Write;
 
-    fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
+    fn brusselator(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
         Array::from_vec(vec![
             1. + y[0].powi(2) * y[1] - 4. * y[0],
             3. * y[0] - y[0].powi(2) * y[1],
@@ -281,7 +279,7 @@ mod tests {
     fn test_euler_system() {
         let y0 = Array1::<f64>::zeros(3);
 
-        let mut integrator = RungeKuttaSystem::new_euler(
+        let integrator = RungeKuttaSystem::new_euler(
             0.,
             y0,
             |_, _| Array1::<f64>::from_elem(3, 2.),
@@ -298,7 +296,7 @@ mod tests {
     fn test_ralston_system() {
         let y0 = Array1::<f64>::zeros(3) + 1.;
 
-        let mut integrator = RungeKuttaSystem::new_ralston(
+        let integrator = RungeKuttaSystem::new_ralston(
             1.,
             y0,
             |_, y| y.map(|x| x.tan()) + 1.,
@@ -313,7 +311,6 @@ mod tests {
 
     #[test]
     fn test_fehlberg_system() {
-
         let t0: f64 = 0.;
         let y0 = Array::from_vec(vec![1.5, 3.]);
         let absolute_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
@@ -329,9 +326,7 @@ mod tests {
             absolute_tol,
         );
 
-        integrator.h = integrator.guess_initial_step();
-        // println!("{:?}", integrator.h);
-        // panic!();
+        integrator.set_step_size(&integrator.guess_initial_step());
 
         for (i, item) in integrator.enumerate() {
             println!("{:?}", item);
@@ -343,7 +338,6 @@ mod tests {
 
     #[test]
     fn test_brusselator_adaptive() {
-
         let t0: f64 = 0.;
         let y0 = Array::from_vec(vec![1.5, 3.]);
         let absolute_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
@@ -359,9 +353,9 @@ mod tests {
             absolute_tol,
         );
 
-        integrator.h = integrator.guess_initial_step();
+        integrator.set_step_size(&integrator.guess_initial_step());
 
-        let mut buffer = File::create("brusselator.csv").unwrap();
+        let mut buffer = File::create("examples/brusselator.csv").unwrap();
 
         for item in integrator {
             writeln!(
@@ -375,16 +369,12 @@ mod tests {
 
     #[test]
     fn test_brusselator_fixed() {
-
         let t0: f64 = 0.;
         let y0 = Array::from_vec(vec![1.5, 3.]);
-        let absolute_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
-        let relative_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
 
-        let mut integrator =
-            RungeKuttaSystem::new_ralston(t0, y0, brusselator, |t, _| t > &20., 0.025);
+        let integrator = RungeKuttaSystem::new_ralston(t0, y0, brusselator, |t, _| t > &20., 0.025);
 
-        let mut buffer = File::create("brusselator.csv").unwrap();
+        let mut buffer = File::create("examples/brusselator.csv").unwrap();
 
         for item in integrator {
             writeln!(

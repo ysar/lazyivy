@@ -35,6 +35,8 @@ state at all steps, `.map()` to chain the iterator with another, etc. You may al
 in a `for` loop and implement you own logic for modifying the step-size or customizing the stop 
 condition.
 
+**API is still under development and future changes may not be backwards compatible.**
+
 ## Usage: 
 
 After adding lazyivy to `Cargo.toml`, create an initial value problem using 
@@ -75,7 +77,7 @@ fn main() {
     );
  
     // For adaptive algorithms, you can use this to improve the initial guess for the step size.
-    integrator.h = integrator.guess_initial_step();
+    integrator.set_step_size(&integrator.guess_initial_step());
  
     // Perform the iterations and print each state.
     for item in integrator {
@@ -84,4 +86,10 @@ fn main() {
 }
 ```
 The result when plotted looks like this - 
-![Brusselator](examples/brusselator_adaptive.png)
+![Brusselator](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/brusselator_adaptive.png)
+
+To-do list:
+- [ ] Add more Runge-Kutta methods.
+- [ ] Improve tests.
+- [ ] Benchmark.
+- [ ] Move allocations out of `next`. 

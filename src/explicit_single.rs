@@ -260,7 +260,7 @@ where
 
             t_next = self.t + h;
             y_next = self.y + h * self.table.b[0] * k[0] + h * sum;
-            y_lower = self.y + h * aux::sum_product(&self.table.b2, &k);
+            y_lower = self.y + h * aux::sum_product(self.table.b2, &k);
 
             err = self.calc_error_norm(&y_next, &y_lower);
 
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn test_euler_constant() {
-        let mut integrator = RungeKutta::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
+        let integrator = RungeKutta::new_euler(0., 0., |_, _| 2., |_, y| y > &5., 1.0);
 
         let result_correct = vec![(1.0, 2.0), (2.0, 4.0), (3.0, 6.0)];
         assert_eq!(result_correct, integrator.collect::<Vec<_>>());
