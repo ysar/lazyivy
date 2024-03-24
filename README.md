@@ -29,8 +29,8 @@ Note that each Runge-Kutta *step* contains `s` number of internal *stages*. Usin
 no way at present to access the integration values for these inner stages. The `next()` call returns 
 the final result for each step, summed over all stages.
 
-The lazy implementation of Runge-Kutta means that you have a range of options to consume the 
-iterator. For e.g., you can use `.last()` to keep only the final result, `.collect()` to gather the
+The lazy implementation of Runge-Kutta means that you can consume the iterator in different ways. 
+For e.g., you can use `.last()` to keep only the final result, `.collect()` to gather the
 state at all steps, `.map()` to chain the iterator with another, etc. You may also choose to use it 
 in a `for` loop and implement you own logic for modifying the step-size or customizing the stop 
 condition.
