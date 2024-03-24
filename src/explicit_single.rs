@@ -1,4 +1,4 @@
-use crate::aux;
+use crate::misc;
 use crate::tables;
 use paste::paste;
 
@@ -131,7 +131,7 @@ where
         for i in 1..self.table.s {
             indx = i * (i - 1) / 2;
             t = self.t + self.table.c[i] * self.h;
-            y = self.y + self.h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
+            y = self.y + self.h * misc::sum_product(&self.table.a[indx..indx + i], &k[..i]);
             k[i] = (self.f)(&t, &y);
             sum += self.table.b[i] * k[i];
         }
@@ -253,14 +253,14 @@ where
             for i in 1..self.table.s {
                 indx = i * (i - 1) / 2;
                 t = self.t + self.table.c[i] * h;
-                y = self.y + h * aux::sum_product(&self.table.a[indx..indx + i], &k[..i]);
+                y = self.y + h * misc::sum_product(&self.table.a[indx..indx + i], &k[..i]);
                 k[i] = (self.f)(&t, &y);
                 sum += self.table.b[i] * k[i];
             }
 
             t_next = self.t + h;
             y_next = self.y + h * self.table.b[0] * k[0] + h * sum;
-            y_lower = self.y + h * aux::sum_product(self.table.b2, &k);
+            y_lower = self.y + h * misc::sum_product(self.table.b2, &k);
 
             err = self.calc_error_norm(&y_next, &y_lower);
 

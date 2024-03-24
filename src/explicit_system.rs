@@ -1,4 +1,4 @@
-use crate::aux;
+use crate::misc;
 use crate::tables;
 use ndarray::Array1;
 use paste::paste;
@@ -103,7 +103,7 @@ where
         for i in 1..self.table.s {
             indx = i * (i - 1) / 2;
             t = self.t + self.table.c[i] * self.h;
-            y = &self.y + self.h * aux::sum_product_array(&self.table.a[indx..indx + 1], &k[..i]);
+            y = &self.y + self.h * misc::sum_product_array(&self.table.a[indx..indx + 1], &k[..i]);
             k[i] = (self.f)(&t, &y);
             sum = sum + self.table.b[i] * &k[i];
         }
@@ -236,14 +236,14 @@ where
                 indx = i * (i - 1) / 2;
                 t = self.t + self.table.c[i] * self.h;
                 y = &self.y
-                    + self.h * aux::sum_product_array(&self.table.a[indx..indx + 1], &k[..i]);
+                    + self.h * misc::sum_product_array(&self.table.a[indx..indx + 1], &k[..i]);
                 k[i] = (self.f)(&t, &y);
                 sum = sum + self.table.b[i] * &k[i];
             }
 
             t_next = self.t + h;
             y_next = &self.y + h * self.table.b[0] * &k[0] + h * &sum;
-            y_lower = &self.y + h * aux::sum_product_array(self.table.b2, &k);
+            y_lower = &self.y + h * misc::sum_product_array(self.table.b2, &k);
 
             error_norm = self.calc_error_norm(&y_next, &y_lower);
 

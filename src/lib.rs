@@ -88,7 +88,7 @@
 
 /// Auxiliary methods
 #[doc(hidden)]
-pub mod aux;
+pub mod misc;
 
 /// The Butcher table contains the `a_ij` matrix and the `c_i` and `b_j` vector coefficients that
 /// specify a particular Runge-Kutta method.  
