@@ -244,20 +244,15 @@ where
 
             error_norm = self.calc_error_norm(&y_next, &y_lower);
 
-            let _tmp: f64 = max_scale_factor.min(
+            h *= max_scale_factor.min(
                 min_scale_factor
                     .max(scale_factor * (1. / error_norm).powf(1. / (self.table.p) as f64)),
             );
-            h *= _tmp;
 
             // println!(
             //     "count = {:}, h = {:?}, t = {:.4}, y = {:.4}, norm = {:.4}, scale = {:.4}",
             //     count, h, t_next, y_next, error_norm, _tmp
             // );
-
-            if count > 10 {
-                panic!()
-            }
         }
         // println!("---- Advancing to next");
         self.h = h;
