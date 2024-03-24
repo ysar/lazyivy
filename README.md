@@ -9,10 +9,13 @@ struct called `RungeKuttaIntegrator` that implements the `Iterator` trait.
 After adding lazyivy to `Cargo.toml`, create an initial value problem using 
 the various `new_*` methods for `RungeKuttaIntegrator`. Here is an example 
 showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator). 
-
+```math
+\frac{d}{dt} \left[ \begin{array}{c}
+ y_1 \\ y_2 \end{array}\right] = \left[\begin{array}{c}1 - y_1^2 y_2 - 4 y_1 \\ 3y_1 - y_1^2 y_2 \end{array}\right]
+```
 ```rust
-use lazyivy::{RungeKutta};
-use ndarray::{s, Array, Array1};
+use lazyivy::RungeKuttaSystemAdaptive;
+use ndarray::{Array, Array1};
  
  
 fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
