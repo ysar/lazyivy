@@ -1,5 +1,9 @@
 # lazyivy
 
+[![Crate](https://img.shields.io/crates/v/lazyivy)](https://crates.io/crates/lazyivy)
+[![Build](https://github.com/ysar/lazyivy/actions/workflows/build.yml/badge.svg)](https://github.com/ysar/lazyivy/actions/workflows/build.yml)
+[![Documentation](https://img.shields.io/docsrs/lazyivy/latest)](https://docs.rs/lazyivy/latest/lazyivy/)
+
 lazyivy is a Rust crate that provides tools to solve initial value problems of the form
 `dY/dt = F(t, y)` using Runge-Kutta methods. 
 
