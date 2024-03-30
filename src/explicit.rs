@@ -6,7 +6,7 @@ use paste::paste;
 macro_rules! impl_new_rungekutta {
     ($name:ident) => {
         paste! {
-            #[doc="Instantiate an ODE integrator (single variable) which uses the " $name:camel " method with adaptive step-size."]
+            #[doc="Instantiate an ODE integrator which uses the " $name:camel " method."]
             pub fn [<new_ $name:lower >] (
                 t: f64,
                 y: Array1<f64>,
@@ -62,11 +62,6 @@ struct _TempArrays {
 
 /// Struct for adaptive step size Runge-Kutta integration. Stores the integration state at every
 /// iteration. Implements [`Iterator`].
-///
-/// ## Usage:
-/// ```rust
-
-/// ```
 pub struct RungeKutta<'a, F, P>
 where
     F: Fn(&f64, &Array1<f64>) -> Array1<f64>,

@@ -15,16 +15,11 @@
 //!
 //! Where `p` is the order of the method and `p*` is the order of the error estimator step.
 //!
-//! Both [`RungeKutta`](explicit::RungeKutta) and
-//! [`RungeKuttaAdaptive`](explicit::RungeKuttaAdaptive)
-//! structs use an `ndarray::Array1<f64>` as the vector of unknowns variables. ODEs with a single
-//! variable can be integrated using an array of length 1.
-//!
 //! ## Lazy integration  
 //!
-//! All integration structs implement the `Iterator` trait. Each `.next()` call advances the
-//! iteration to the next Runge-Kutta *step* and returns a tuple `(t, y)`, where `t` is the
-//! dependent variable and `y` is `Array1<f64>`.
+//! [`RungeKutta`](explicit::RungeKutta) implements the `Iterator` trait. Each `.next()` call 
+//! advances the iteration to the next Runge-Kutta *step* and returns a tuple `(t, y)`, where `t` 
+//! is the dependent variable and `y` is `Array1<f64>`, which can be used to solve systems of ODEs.
 //!
 //! Note that each Runge-Kutta *step* contains `s` number of internal *stages*. Using lazyivy,
 //! there is no way at present to access the integration values for these inner stages. The `next()`
