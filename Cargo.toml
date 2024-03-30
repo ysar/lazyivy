@@ -1,6 +1,6 @@
 [package]
 name = "lazyivy"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "BSD-2-Clause-Patent"
 description = "Lazy Runge-Kutta integration for initial value problems."
@@ -9,7 +9,8 @@ repository = "https://github.com/ysar/lazyivy"
 exclude = [
     "examples/*",
 ]
-
+keywords = ["runge-kutta", "ode", "integration", "lazy-evaluation"]
+categories = ["mathematics", "science", "aerospace"]
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

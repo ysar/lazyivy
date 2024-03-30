@@ -1,29 +1,13 @@
-/// Struct storing Butcher tables or Runge-Kutta coefficients for different Runge-Kutta methods that
-/// do not use a lower-order error estimator.
+/// Struct storing Butcher tables or Runge-Kutta coefficients for different Runge-Kutta methods.
 pub struct ButcherTableau<'t> {
-    /// Number of Runge-Kutta stages
-    pub s: usize,
-
-    /// The `a` matrix in a Runge-Kutta Butcher table. It is two-dimensional.
-    pub a: &'t [f64],
-
-    /// The `b` vector in a Runge-Kutta Butcher table. It is one-dimensional.
-    pub b: &'t [f64],
-
-    /// The `c` vector in a Runge-Kutta Butcher table.
-    pub c: &'t [f64],
-}
-
-/// Struct storing Butcher tables or Runge-Kutta coefficients for different Runge-Kutta methods that
-/// use a lower-order error estimator. This is useful for adaptive step size.
-pub struct ButcherTableauAdaptive<'t> {
     /// Number of Runge-Kutta stages
     pub s: usize,
 
     /// Runge-Kutta order of accuracy
     pub p: usize,
 
-    /// The `a` matrix in a Runge-Kutta Butcher table. It is two-dimensional.
+    /// The `a` matrix in a Runge-Kutta Butcher table. It is two-dimensional. It is stored as a
+    /// lower triangular matrix that has been flattened into a one-dimensional array slice.
     pub a: &'t [f64],
 
     /// The `b` vector in a Runge-Kutta Butcher table. It is one-dimensional.
@@ -41,25 +25,58 @@ pub struct ButcherTableauAdaptive<'t> {
 /// Runge-Kutta coefficients table for the Euler method.
 pub const EULER_BT: ButcherTableau = ButcherTableau {
     s: 1,
+    p: 0,
     a: &[],
     b: &[1.],
     c: &[0.],
+    b2: &[],
 };
 
 /// Runge-Kutta coefficients table for the Ralston method.
 #[rustfmt::skip]
 pub const RALSTON_BT: ButcherTableau = ButcherTableau {
     s: 2,
+    p: 2,
     a: &[2./3.],
     b: &[1./4., 3./4.],
     c: &[0., 2./3.],
+    b2: &[],
 };
 
-/// Runge-Kutta coefficients table for the adaptive Fehlberg method.
+/// Runge-Kutta coefficients table for the Huen-Euler method. This is a second order 
+/// method with an error estimate of order 1.
 #[rustfmt::skip]
-pub const FEHLBERG_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive {
+pub const HUENEULER_BT: ButcherTableau = ButcherTableau {
+    s: 2,
+    p: 2,
+    a: &[1.],
+    b: &[0.5, 0.5],
+    c: &[0., 1.],
+    b2: &[1., 0.]
+};
+
+/// Runge-Kutta coefficients table for the embedded Bogacki-Shampine method. This is a 3rd order 
+/// accurate method with a 2nd order error estimator.
+#[rustfmt::skip]
+pub const BOGACKISHAMPINE_BT: ButcherTableau = ButcherTableau {
+    s: 3,
+    p: 3,
+    a: &[
+        0.5,
+        0., 0.75,
+        2./9., 1./3., 4./9.
+        ],
+    c: &[0., 0.5, 0.75, 1.],
+    b: &[2./9., 1./3., 4./9., 0.],
+    b2: &[7./24., 1./4., 1./3., 1./8.], 
+};
+
+/// Runge-Kutta coefficients table for the embedded Fehlberg method. This is a 4th order accurate
+/// method, despite the error estimator step having 5th order coefficents. 
+#[rustfmt::skip]
+pub const FEHLBERG_BT: ButcherTableau = ButcherTableau {
     s: 6,
-    p: 5,
+    p: 4,
     a: &[
         0.25,
         3./32., 9./32., 
@@ -72,20 +89,11 @@ pub const FEHLBERG_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive 
     b2: &[16./135., 0., 6656./12825., 28561./56430., -9./50., 2./55.],
 };
 
-/// Runge-Kutta coefficients table for the adaptive Hueneuler method.
+/// Runge-Kutta coefficients table for the embedded Dormand-Prince method. This is a 5th order 
+/// method that has an error estimator of order 4. The practice of using the higher-order method
+/// to continue the integration is called "local extrapolation". 
 #[rustfmt::skip]
-pub const HUENEULER_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive {
-    s: 2,
-    p: 2,
-    a: &[1.],
-    b: &[0.5, 0.5],
-    c: &[0., 1.],
-    b2: &[1., 0.]
-};
-
-/// Runge-Kutta coefficients table for the adaptive Dormand-Prince method.
-#[rustfmt::skip]
-pub const DORMANDPRINCE_BT_ADAPTIVE: ButcherTableauAdaptive = ButcherTableauAdaptive {
+pub const DORMANDPRINCE_BT: ButcherTableau = ButcherTableau {
     s: 7,
     p: 5,
     a: &[
