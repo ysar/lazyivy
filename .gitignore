@@ -5,3 +5,6 @@ Cargo.lock
 .vscode/
 *.py
 *.csv
+
+python/requirements/*.txt
+python/env
