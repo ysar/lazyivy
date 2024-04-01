@@ -126,3 +126,6 @@ pub mod explicit;
 
 // Re-export some useful structs
 pub use crate::explicit::RungeKutta;
+
+/// Linalg module
+pub mod linalg;
