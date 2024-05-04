@@ -50,37 +50,38 @@ showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator
  y_1 \\ y_2 \end{array}\right] = \left[\begin{array}{c}1 - y_1^2 y_2 - 4 y_1 
  \\ 3y_1 - y_1^2 y_2 \end{array}\right]
 ```
+
 ```rust
 use lazyivy::RungeKutta;
-use ndarray::{Array, Array1};
+use ndarray::{array, Array1};
  
  
-fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
-    Array::from_vec(vec![
+fn brusselator(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
+    array![
         1. + y[0].powi(2) * y[1] - 4. * y[0],
         3. * y[0] - y[0].powi(2) * y[1],
-    ])
+    ]
 }
  
 fn main() {
     let t0: f64 = 0.;
-    let y0 = Array::from_vec(vec![1.5, 3.]);
-    let absolute_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
-    let relative_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
+    let y0 = array![1.5, 3.];
+    let absolute_tol = array![1.0e-4, 1.0e-4];
+    let relative_tol = array![1.0e-4, 1.0e-4];
  
     // Instantiate a integrator for an ODE system with adaptive step-size 
-    // Runge-Kutta.
+    // Runge-Kutta. The `builder` method takes in as argument the evaluation
+    // function and the predicate function (that determines when to stop). You
+    // need to call `build()` to consume the builder and return a `RungeKutta`
+    // struct.
  
-    let mut integrator = RungeKutta::new_fehlberg(
-        t0,              // Initial condition - time t0
-        y0,              // Initial condition - Initial condition [y1, y2] @ t0
-        brusselator,     // Evaluation function
-        |t, _| t > &20., // Predicate that determines stop condition
-        0.025,           // Initial step size
-        relative_tol,    // Relative tolerance for error estimation
-        absolute_tol,    // Absolute tolerance for error estimation
-        true,            // Use adaptive step-size
-    );
+    let mut integrator = RungeKutta::builder(brusselator, |t, _| *t > 40.)
+        .initial_condition(t0, y0)
+        .initial_step_size(0.025)
+        .method("dormandprince", true)   // `true` for adaptive step-size
+        .tolerances(absolute_tol, relative_tol)
+        .set_max_step_size(0.25)
+        .build()?;
  
     // For adaptive algorithms, you can use this to improve the initial guess 
     // for the step size.
@@ -88,17 +89,74 @@ fn main() {
  
     // Perform the iterations and print each state.
     for item in integrator {
-        println!("{:?}", item)   // Prints (t, array[y1, y2]) for each step.
+        println!("{:?}", item);   // Prints (t, array[y1, y2]) for each step.
     }
 }
 ```
 The result when plotted looks like this - 
-![Brusselator](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/brusselator_adaptive.png)
+![Brusselator](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/brusselator.png)
+
+Likewise, you can do the same for other problems, e.g. for the 
+[Lorenz attractor](https://en.wikipedia.org/wiki/Lorenz_system),
+define the evaluation function
+
+```rust
+fn lorentz_attractor(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
+    array![
+        10. * (y[1] - y[0]),
+        y[0] * (28. - y[2]) - y[1],
+        y[0] * y[1] - 8. / 3. * y[2],
+    ]
+}
+```
+
+You can also use closures to capture the environment and wrap your evaluation. 
+That is, if you have a function - 
+
+```rust
+fn lorentz_attractor(
+    x: f64, 
+    y: f64, 
+    z: f64, 
+    sigma: f64, 
+    beta: f64,
+    rho: f64
+    ) -> Array1<f64> {
+    array![
+        sigma * (y - x),
+        x * (rho - z) - y,
+        x * y - beta * z,
+    ]
+}
+```
+you cannot pass this to `RungeKutta::builder()` directly. But you can wrap this 
+into a closure. E.g.,
+
+```rust
+let sigma = 10.;
+let beta = 8. / 3.;
+let rho: 28.;
+
+let eval_closure = |_t, y| {
+    // Closure captures the environment and wraps the function signature
+    lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho)
+};
+
+let integrator = RungeKutta::builder(eval_closure, |t, _| *t > 20.)
+    ... // other parameters
+    .build();
+```
+This works because closures that do not modify their environments can coerce to 
+`Fn`. Hence, this pattern will not work for closures that mutate their 
+environments. In general, you can use any evaluation function and stop condition,
+but they must be `Fn(&f64, &Array1<f64>) -> Array1<f64>` and 
+`Fn(&f64, &Array1<f64>) -> bool`, respectively.
+
+Here is a plot showing the Lorenz attractor result:
+
+The result when plotted looks like this - 
+![Lorenz Attractor](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/lorenzattractor.png)
 
 ## To-do list:
-- [ ] Add more Runge-Kutta methods.
 - [ ] Improve tests.
 - [ ] Benchmark.
-- [x] Move allocations out of `next` and into a separate struct.
-- [ ] Add more examples, e.g. Lorentz attractor.
-- [ ] 

@@ -1,10 +1,10 @@
 //! # lazyivy
 //!
 //! lazyivy is a Rust crate that provides tools to solve initial value problems of the form
-//! `dY/dt = F(t, y)` using Runge-Kutta methods.
+//! `dY/dt = F(t, Y)` using Runge-Kutta methods.
 //!
-//! The algorithms are implemented using the struct `RungeKutta`, that implements
-//! `Iterator`. The following Runge-Kutta methods are implemented currently, and
+//! The algorithms are implemented using the struct [`RungeKutta`] that implements
+//! [`Iterator`]. The following Runge-Kutta methods are implemented currently, and
 //! more will be added in the near future.  
 //! - Euler 1
 //! - Ralston 2
@@ -17,8 +17,8 @@
 //!
 //! ## Lazy integration  
 //!
-//! [`RungeKutta`](explicit::RungeKutta) implements the `Iterator` trait. Each `.next()` call 
-//! advances the iteration to the next Runge-Kutta *step* and returns a tuple `(t, y)`, where `t` 
+//! [`RungeKutta`] implements the `Iterator` trait. Each `.next()` call
+//! advances the iteration to the next Runge-Kutta *step* and returns a tuple `(t, y)`, where `t`
 //! is the dependent variable and `y` is `Array1<f64>`, which can be used to solve systems of ODEs.
 //!
 //! Note that each Runge-Kutta *step* contains `s` number of internal *stages*. Using lazyivy,
@@ -35,12 +35,7 @@
 //!
 //! After adding lazyivy to `Cargo.toml`, create an initial value problem using
 //! the various `new_*` methods. Here is an example
-//! showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator).
-//! ```math
-//! \frac{d}{dt} \left[ \begin{array}{c}
-//!  y_1 \\ y_2 \end{array}\right] = \left[\begin{array}{c}
-//! 1 - y_1^2 y_2 - 4 y_1 \\ 3y_1 - y_1^2 y_2 \end{array}\right]
-//! ```
+//! showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator).  
 //! ```rust
 //! use lazyivy::RungeKutta;
 //! use ndarray::{Array, Array1};
@@ -53,7 +48,7 @@
 //!     ])
 //! }
 //!  
-//! fn main() {
+//! fn main() -> Result<(), String> {
 //!     let t0: f64 = 0.;
 //!     let y0 = Array::from_vec(vec![1.5, 3.]);
 //!     let absolute_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
@@ -61,16 +56,13 @@
 //!  
 //!     // Instantiate a integrator for an ODE system with adaptive step-size Runge-Kutta.
 //!  
-//!     let mut integrator = RungeKutta::new_fehlberg(
-//!         t0,                   // Initial condition - time
-//!         y0,                   // Initial condition - Brusselator variables in Array[y1, y2]
-//!         brusselator,          // Evaluation function
-//!         |t, _| t > &20.,      // Predicate that determines stop condition
-//!         0.025,                // Initial step size
-//!         relative_tol,         // Relative tolerance for error estimation
-//!         absolute_tol,         // Absolute tolerance for error estimation
-//!         true,                 // Use adaptive step-size
-//!     );
+//!     let mut integrator = RungeKutta::builder(brusselator, |t, _| *t > 40.)
+//!         .initial_condition(t0, y0)
+//!         .initial_step_size(0.025)
+//!         .method("fehlberg", true)
+//!         .tolerances(absolute_tol, relative_tol)
+//!         .set_max_step_size(0.25)
+//!         .build()?;
 //!  
 //!     // For adaptive algorithms, you can use this to improve the initial guess for the step size.
 //!     integrator.set_step_size(&integrator.guess_initial_step());
@@ -79,14 +71,12 @@
 //!     for item in integrator {
 //!         println!("{:?}", item)   // Prints the tuple (t, array[y1, y2]) at each iteration
 //!     }
+//!
+//!     Ok(())
 //! }
 //! ```
 
 #![warn(missing_docs)]
-
-/// Auxiliary methods
-#[doc(hidden)]
-pub mod misc;
 
 /// The Butcher table contains the `a_ij` matrix and the `c_i` and `b_j` vector coefficients that
 /// specify a particular Runge-Kutta method.  

@@ -1,6 +1,6 @@
 [package]
 name = "lazyivy"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 license = "BSD-2-Clause-Patent"
 description = "Lazy Runge-Kutta integration for initial value problems."
@@ -17,4 +17,3 @@ categories = ["mathematics", "science", "aerospace"]
 
 [dependencies]
 ndarray = "0.15.6"
-paste = "1.0.14"
