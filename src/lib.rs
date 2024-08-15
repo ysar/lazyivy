@@ -34,7 +34,7 @@
 //! ## Usage:
 //!
 //! After adding lazyivy to `Cargo.toml`, create an initial value problem using
-//! the various `new_*` methods. Here is an example
+//! the provided builder method. Here is an example
 //! showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator).  
 //! ```rust
 //! use lazyivy::RungeKutta;

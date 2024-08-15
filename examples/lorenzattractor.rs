@@ -24,15 +24,14 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut buffer = File::create("data/lorentz_attractor.csv").unwrap();
+    let mut buffer = File::create("data/lorenz_attractor.csv").unwrap();
 
     for item in integrator {
-        // writeln!(
-        //     &mut buffer,
-        //     "{:.4}, {:.4}, {:.4}, {:.4}",
-        //     item.0, item.1[0], item.1[1], item.1[2],
-        // )
-        // .unwrap();
+        writeln!(
+            &mut buffer,
+            "{:.4}, {:.4}, {:.4}, {:.4}",
+            item.0, item.1[0], item.1[1], item.1[2],
+        )
+        .unwrap();
     }
-
 }

@@ -150,7 +150,7 @@ environments. In general, you can use any evaluation function and stop condition
 but they must be `Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)` and 
 `Fn(&f64, ArrayView1<f64>) -> bool`, respectively.
 
-Here is a plot showing the Lorenz attractor result:
+Here is a plot showing the Lorenz attractor result.
 
 ![Lorenz Attractor](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/lorenzattractor.png)
 
@@ -176,12 +176,28 @@ fn lorentz_attractor(
     result[2] = x * y - beta * z;
 }
 ```
-And then you can wrap this in a closure with the appropriate signature. This way 
-you will avoid an allocation each time the function is called. 
+And then you can wrap this in a closure with the appropriate signature.
+
+```rust
+let sigma = 10.;
+let beta = 8. / 3.;
+let rho: 28.;
+
+let eval_closure = |_t, y, result| {    // here result is mut
+    lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho, result);
+    //                                                    ^-----
+    //                                       Added result as an argument
+};
+```
+This way you will avoid an allocation each time the function is called. 
 
 To facilitate this change, as of v0.5.0, the signature of the generic parameter `F`
 that was previously `Fn(&f64, &Array1<f64>) -> Array1<f64>` was changed to 
 `Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)`. 
+
+Since Rust does not allow for mutiple mutable references, this change does mean 
+that `RungeKutta` is no longer thread-safe. But, this should be fine because 
+Runge-Kutta iterations are sequential and cannot easily be multi-threaded. 
 
 ## To-do:
 - [ ] Add better tests.

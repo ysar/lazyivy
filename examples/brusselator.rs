@@ -26,12 +26,11 @@ fn main() {
     let mut buffer = File::create("data/brusselator.csv").unwrap();
 
     for item in integrator {
-        // writeln!(
-        //     &mut buffer,
-        //     "{:.4}, {:.4}, {:.4}",
-        //     item.0, item.1[0], item.1[1]
-        // )
-        // .unwrap();
+        writeln!(
+            &mut buffer,
+            "{:.4}, {:.4}, {:.4}",
+            item.0, item.1[0], item.1[1]
+        )
+        .unwrap();
     }
-
 }

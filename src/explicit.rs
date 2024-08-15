@@ -7,7 +7,7 @@ use ndarray::{array, s, Array1, Array2, ArrayView1, ArrayViewMut1};
 /// `RungeKutta`, it is generic over the evaluation function and predicate.
 pub struct RungeKuttaBuilder<F, P>
 where
-    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>), 
+    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
     P: Fn(&f64, ArrayView1<f64>) -> bool,
 {
     t: f64,
@@ -24,7 +24,7 @@ where
 
 impl<F, P> RungeKuttaBuilder<F, P>
 where
-    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>), 
+    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
     P: Fn(&f64, ArrayView1<f64>) -> bool,
 {
     /// Create a new `RungeKuttaBuilder` instance.
@@ -91,23 +91,23 @@ where
     /// Consumes the `RungeKuttaBuilder` and returns a `Result` containing the `RungeKutta` struct.
     /// This needs to be called at the very end of the construction chain.
     pub fn build(self) -> Result<RungeKutta<F, P>, BuilderError> {
-
+        // Get the Runge-Kutta table of coefficients.
         let table = tables::get_rungekutta_coefficients(&self.method);
-        
         if table.is_none() {
             return Err(BuilderError::UnknownRungeKuttaMethod(self.method));
         }
-
         let table = table.unwrap();
-        
+
         let num_variables: usize = self.y.len();
 
+        // Some checks to make sure the array lengths are consistent.
         let mut f0 = Array1::<f64>::zeros(num_variables);
-
         (self.f)(&self.t, self.y.view(), f0.view_mut());
 
         if f0.len() != num_variables {
-            return Err(BuilderError::InconsistentSize("Evaluation function".to_string()));
+            return Err(BuilderError::InconsistentSize(
+                "Evaluation function".to_string(),
+            ));
         }
 
         if self.relative_tol.len() != num_variables || self.absolute_tol.len() != num_variables {
@@ -174,7 +174,7 @@ impl Buffer {
 /// iteration. Implements [`Iterator`].
 pub struct RungeKutta<F, P>
 where
-    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>), 
+    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
     P: Fn(&f64, ArrayView1<f64>) -> bool,
 {
     t: f64,
@@ -191,10 +191,9 @@ where
     buffer: Buffer,
 }
 
-///
 impl<F, P> RungeKutta<F, P>
 where
-    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>), 
+    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
     P: Fn(&f64, ArrayView1<f64>) -> bool,
 {
     /// Returns a `RungeKuttaBuilder` for building a `RungeKutta` struct.
@@ -220,9 +219,8 @@ where
     /// Provides a reasonable guess for the step-size at the first iteration.
     /// Follows the algorithm written in Harrier, Nørsett, Wanner.
     pub fn guess_initial_step(&self) -> f64 {
-
         let mut f0 = Array1::<f64>::zeros(self._num_variables);
-        
+
         // Mutate f0 in-place by calling the evaluation function.
         (self.f)(&self.t, self.y.view(), f0.view_mut());
 
@@ -255,7 +253,7 @@ where
 
 impl<F, P> Iterator for RungeKutta<F, P>
 where
-    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>), 
+    F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
     P: Fn(&f64, ArrayView1<f64>) -> bool,
 {
     type Item = (f64, Array1<f64>);
@@ -267,13 +265,13 @@ where
         }
 
         // RK Logic
-        
+
         // Set all buffer values to zero, except for f_now. Need a local scope
         // to drop mutable borrow.
         {
             let buffer = &mut self.buffer;
 
-            // Store k[i] values in a vector, initialize with the first value 
+            // Store k[i] values in a vector, initialize with the first value
             (self.f)(&self.t, self.y.view(), buffer.f_now.view_mut());
 
             // Re-fill the temporary arrays with zeros or fill values
@@ -287,7 +285,7 @@ where
             buffer.y_next.fill(0.);
             buffer.y_err.fill(0.);
         }
-        
+
         #[allow(unused_assignments)]
         let mut t: f64 = 0.;
 
@@ -308,9 +306,8 @@ where
         let max_scale_factor: f64 = 2.;
 
         while error_norm > 1. {
-            
             // Start local scole for mutable borrow of buffer
-            {   
+            {
                 let buffer = &mut self.buffer;
 
                 buffer.sum.fill(0.);
@@ -353,9 +350,8 @@ where
 
                 // Calculate the result using the error estimator coefficients.
                 buffer.y_err = &self.y + step * self.table.b2.dot(&buffer.k);
-
             } // buffer mutable borrow is dropped
-                
+
             error_norm = self.calc_error_norm(self.buffer.y_next.view(), self.buffer.y_err.view());
 
             // Scale step-size based on the norm of the error between the result and the error
@@ -372,7 +368,7 @@ where
         }
 
         self.step = step;
-        self.y = self.buffer.y_next.clone();
+        self.y.clone_from(&self.buffer.y_next);
         self.t = t_next;
 
         Some((self.t, self.y.clone()))
@@ -387,7 +383,6 @@ mod tests {
     fn brusselator(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
         result[0] = 1. + y[0].powi(2) * y[1] - 4. * y[0];
         result[1] = 3. * y[0] - y[0].powi(2) * y[1];
-
     }
 
     #[test]
@@ -415,7 +410,7 @@ mod tests {
         let y0 = array![1.5, 3.];
         let absolute_tol = array![1.0e-4, 1.0e-4];
         let relative_tol = array![1.0e-4, 1.0e-4];
-        
+
         let brusselator_closure = |t: &f64, y: ArrayView1<f64>, result: ArrayViewMut1<f64>| {
             brusselator(t, y, result);
         };
