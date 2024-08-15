@@ -1,14 +1,12 @@
 use lazyivy::RungeKutta;
-use ndarray::{array, Array1};
+use ndarray::{array, ArrayView1, ArrayViewMut1};
 use std::fs::File;
 use std::io::Write;
 
-fn lorentz_attractor(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
-    array![
-        10. * (y[1] - y[0]),
-        y[0] * (28. - y[2]) - y[1],
-        y[0] * y[1] - 8. / 3. * y[2],
-    ]
+fn lorentz_attractor(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
+    result[0] = 10. * (y[1] - y[0]);
+    result[1] = y[0] * (28. - y[2]) - y[1];
+    result[2] = y[0] * y[1] - 8. / 3. * y[2];
 }
 
 fn main() -> Result<(), String> {

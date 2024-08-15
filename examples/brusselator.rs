@@ -1,13 +1,11 @@
 use lazyivy::RungeKutta;
-use ndarray::{array, Array1};
+use ndarray::{array, ArrayView1, ArrayViewMut1};
 use std::fs::File;
 use std::io::Write;
 
-fn brusselator(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
-    array![
-        1. + y[0].powi(2) * y[1] - 4. * y[0],
-        3. * y[0] - y[0].powi(2) * y[1],
-    ]
+fn brusselator(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
+    result[0] = 1. + y[0].powi(2) * y[1] - 4. * y[0];
+    result[1] = 3. * y[0] - y[0].powi(2) * y[1];
 }
 
 fn main() -> Result<(), String> {

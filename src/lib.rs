@@ -38,14 +38,12 @@
 //! showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator).  
 //! ```rust
 //! use lazyivy::RungeKutta;
-//! use ndarray::{Array, Array1};
+//! use ndarray::{Array, ArrayView1, ArrayViewMut1};
 //!  
 //!  
-//! fn brusselator(t: &f64, y: &Array1<f64>) -> Array1<f64> {
-//!     Array::from_vec(vec![
-//!         1. + y[0].powi(2) * y[1] - 4. * y[0],
-//!         3. * y[0] - y[0].powi(2) * y[1],
-//!     ])
+//! fn brusselator(t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
+//!     result[0] = 1. + y[0].powi(2) * y[1] - 4. * y[0];
+//!     result[1] = 3. * y[0] - y[0].powi(2) * y[1];
 //! }
 //!  
 //! fn main() -> Result<(), String> {

@@ -1,4 +1,4 @@
-Copyright (c) <2023> <Yash Sarkango>
+Copyright (c) 2023 Yash Sarkango
 
 Licensed under the BSD-2-Clause-Patent terms, which are written below.
 
