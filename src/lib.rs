@@ -46,7 +46,7 @@
 //!     result[1] = 3. * y[0] - y[0].powi(2) * y[1];
 //! }
 //!  
-//! fn main() -> Result<(), String> {
+//! fn main() {
 //!     let t0: f64 = 0.;
 //!     let y0 = Array::from_vec(vec![1.5, 3.]);
 //!     let absolute_tol = Array::from_vec(vec![1.0e-4, 1.0e-4]);
@@ -60,7 +60,8 @@
 //!         .method("fehlberg", true)
 //!         .tolerances(absolute_tol, relative_tol)
 //!         .set_max_step_size(0.25)
-//!         .build()?;
+//!         .build()
+//!         .unwrap();  // Could also use ? to return `BuilderError`
 //!  
 //!     // For adaptive algorithms, you can use this to improve the initial guess for the step size.
 //!     integrator.set_step_size(&integrator.guess_initial_step());
@@ -70,11 +71,13 @@
 //!         println!("{:?}", item)   // Prints the tuple (t, array[y1, y2]) at each iteration
 //!     }
 //!
-//!     Ok(())
 //! }
 //! ```
 
 #![warn(missing_docs)]
+
+/// Contains the `BuilderError` error struct that is returned if the Runge-Kutta builder fails.
+pub mod error;
 
 /// The Butcher table contains the `a_ij` matrix and the `c_i` and `b_j` vector coefficients that
 /// specify a particular Runge-Kutta method.  

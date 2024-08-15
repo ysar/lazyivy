@@ -5,7 +5,8 @@
 [![Documentation](https://img.shields.io/docsrs/lazyivy/latest)](https://docs.rs/lazyivy/latest/lazyivy/)
 
 lazyivy is a Rust crate that provides tools to solve initial value problems of 
-the form `dY/dt = F(t, y)` using Runge-Kutta methods. 
+the form `dY/dt = F(t, Y)` using Runge-Kutta methods, where `Y` is a vector 
+and `t` is a scalar.
 
 The algorithms are implemented using the struct `RungeKutta`, that implements 
 `Iterator`. The following Runge-Kutta methods are implemented currently, and 
@@ -17,13 +18,13 @@ more will be added in the near future.
 - Fehlberg 4(5)
 - Dormand-Prince 5(4)
 
-Where `p` is the order of the method and `(p*)` is the order of the embedded 
-error estimator, if it is present.
+(`p` is the order of the method and `(p*)` is the order of the embedded 
+error estimator, if it is present.)
 
 ## Lazy integration
 `RungeKutta` implements the `Iterator` trait. Each `.next()` call advances the 
-iteration to the next Runge-Kutta *step* and returns a tuple `(t, y)`, where 
-`t` is the dependent variable and `y` is `Array1<f64>`. 
+iteration to the next Runge-Kutta *step* and returns a tuple `(t, Y)`, where 
+`t` is the dependent variable and `Y` is `Array1<f64>`. 
 
 Note that each Runge-Kutta *step* contains `s` number of internal *stages*. 
 Using lazyivy, there is no way at present to access the integration values for 
@@ -42,25 +43,23 @@ condition.
 ## Usage: 
 
 After adding lazyivy to `Cargo.toml`, create an initial value problem using 
-the various `new_*` methods. Here is an example 
+the provided builder. Here is an example 
 showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator). 
 
 ```math 
 \frac{d}{dt} \left[ \begin{array}{c}
  y_1 \\ y_2 \end{array}\right] = \left[\begin{array}{c}1 - y_1^2 y_2 - 4 y_1 
- \\ 3y_1 - y_1^2 y_2 \end{array}\right]
+ \\ 3y_1 - y_1^2 y_2 \end{array} \right]
 ```
 
 ```rust
 use lazyivy::RungeKutta;
-use ndarray::{array, Array1};
+use ndarray::{array, ArrayView1, ArrayViewMut1};
  
  
-fn brusselator(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
-    array![
-        1. + y[0].powi(2) * y[1] - 4. * y[0],
-        3. * y[0] - y[0].powi(2) * y[1],
-    ]
+fn brusselator(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
+    result[0] = 1. + y[0].powi(2) * y[1] - 4. * y[0];
+    reuslt[1] = 3. * y[0] - y[0].powi(2) * y[1];
 }
  
 fn main() {
@@ -81,7 +80,8 @@ fn main() {
         .method("dormandprince", true)   // `true` for adaptive step-size
         .tolerances(absolute_tol, relative_tol)
         .set_max_step_size(0.25)
-        .build()?;
+        .build()
+        .unwrap();
  
     // For adaptive algorithms, you can use this to improve the initial guess 
     // for the step size.
@@ -93,7 +93,7 @@ fn main() {
     }
 }
 ```
-The result when plotted looks like this - 
+The result when plotted looks like this, 
 ![Brusselator](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/brusselator.png)
 
 Likewise, you can do the same for other problems, e.g. for the 
@@ -101,12 +101,10 @@ Likewise, you can do the same for other problems, e.g. for the
 define the evaluation function
 
 ```rust
-fn lorentz_attractor(_t: &f64, y: &Array1<f64>) -> Array1<f64> {
-    array![
-        10. * (y[1] - y[0]),
-        y[0] * (28. - y[2]) - y[1],
-        y[0] * y[1] - 8. / 3. * y[2],
-    ]
+fn lorentz_attractor(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
+    result[0] = 10. * (y[1] - y[0]);
+    result[1] = y[0] * (28. - y[2]) - y[1];
+    result[2] = y[0] * y[1] - 8. / 3. * y[2];
 }
 ```
 
@@ -137,9 +135,9 @@ let sigma = 10.;
 let beta = 8. / 3.;
 let rho: 28.;
 
-let eval_closure = |_t, y| {
+let eval_closure = |_t, y, result| {    // here result is mut
     // Closure captures the environment and wraps the function signature
-    lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho)
+    result = lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho);
 };
 
 let integrator = RungeKutta::builder(eval_closure, |t, _| *t > 20.)
@@ -149,14 +147,42 @@ let integrator = RungeKutta::builder(eval_closure, |t, _| *t > 20.)
 This works because closures that do not modify their environments can coerce to 
 `Fn`. Hence, this pattern will not work for closures that mutate their 
 environments. In general, you can use any evaluation function and stop condition,
-but they must be `Fn(&f64, &Array1<f64>) -> Array1<f64>` and 
-`Fn(&f64, &Array1<f64>) -> bool`, respectively.
+but they must be `Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)` and 
+`Fn(&f64, ArrayView1<f64>) -> bool`, respectively.
 
 Here is a plot showing the Lorenz attractor result:
 
-The result when plotted looks like this - 
 ![Lorenz Attractor](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/lorenzattractor.png)
 
-## To-do list:
-- [ ] Improve tests.
+# Mutating in-place (as of version 0.5.0)
+In the above example for the Lorenz attractor, I created a new array using the 
+`array!` macro. However, I recommend in practice that you use evaluation 
+functions that mutate a `result` array that is passed to the function. 
+
+For example, the same example could take the form - 
+
+```rust
+fn lorentz_attractor(
+    x: f64, 
+    y: f64, 
+    z: f64, 
+    sigma: f64, 
+    beta: f64,
+    rho: f64,
+    result: ArrayViewMut1<f64>,   // Mutate this argument in-place.
+    ) {
+    result[0] = sigma * (y - x);
+    result[1] = x * (rho - z) - y;
+    result[2] = x * y - beta * z;
+}
+```
+And then you can wrap this in a closure with the appropriate signature. This way 
+you will avoid an allocation each time the function is called. 
+
+To facilitate this change, as of v0.5.0, the signature of the generic parameter `F`
+that was previously `Fn(&f64, &Array1<f64>) -> Array1<f64>` was changed to 
+`Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)`. 
+
+## To-do:
+- [ ] Add better tests.
 - [ ] Benchmark.

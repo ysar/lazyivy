@@ -1,4 +1,6 @@
+use crate::error::BuilderError;
 use crate::tables;
+
 use ndarray::{array, s, Array1, Array2, ArrayView1, ArrayViewMut1};
 
 /// Builder struct for `RungeKutta`. It can be called directly or via `RungeKutta::builder()`. Like
@@ -88,9 +90,16 @@ where
 
     /// Consumes the `RungeKuttaBuilder` and returns a `Result` containing the `RungeKutta` struct.
     /// This needs to be called at the very end of the construction chain.
-    pub fn build(self) -> Result<RungeKutta<F, P>, String> {
-        let table = tables::get_rungekutta_coefficients(&self.method)?;
+    pub fn build(self) -> Result<RungeKutta<F, P>, BuilderError> {
 
+        let table = tables::get_rungekutta_coefficients(&self.method);
+        
+        if table.is_none() {
+            return Err(BuilderError::UnknownRungeKuttaMethod(self.method));
+        }
+
+        let table = table.unwrap();
+        
         let num_variables: usize = self.y.len();
 
         let mut f0 = Array1::<f64>::zeros(num_variables);
@@ -98,36 +107,23 @@ where
         (self.f)(&self.t, self.y.view(), f0.view_mut());
 
         if f0.len() != num_variables {
-            return Err("Evaluation function inconsistent with initial condition.".to_string());
+            return Err(BuilderError::InconsistentSize("Evaluation function".to_string()));
         }
 
         if self.relative_tol.len() != num_variables || self.absolute_tol.len() != num_variables {
-            return Err(
-                "Tolerances need to be arrays with the same size as the vector of unknowns."
-                    .to_string(),
-            );
+            return Err(BuilderError::InconsistentSize("Tolerances".to_string()));
         }
 
         match self.method.as_str() {
-            "euler" => {
-                return Err(format!(
-                    "Adaptive step-size not implemented for method : '{:}'",
-                    self.method
-                ))
-            }
-            "ralston" => {
-                return Err(format!(
-                    "Adaptive step-size not implemented for method : '{:}'",
-                    self.method
-                ))
-            }
+            "euler" => return Err(BuilderError::AdaptiveNotImplemented("euler".to_string())),
+            "ralston" => return Err(BuilderError::AdaptiveNotImplemented("ralston".to_string())),
             _ => {}
         }
 
         // Pre-allocate some arrays used in the iterations. Cloning here is fine, we are only doing
         // it once at the beginning.
 
-        let tmp_variables = _TempArrays::new(num_variables, table.num_stages);
+        let tmp_variables = Buffer::new(num_variables, table.num_stages);
 
         Ok(RungeKutta {
             t: self.t,
@@ -141,13 +137,13 @@ where
             table,
             max_step_size: self.max_step_size,
             _num_variables: num_variables,
-            _t: tmp_variables,
+            buffer: tmp_variables,
         })
     }
 }
 
 /// Struct to store preallocated arrays
-struct _TempArrays {
+struct Buffer {
     k: Array2<f64>,
     y: Array1<f64>,
     f_now: Array1<f64>,
@@ -157,12 +153,12 @@ struct _TempArrays {
     sum: Array1<f64>,
 }
 
-impl _TempArrays {
+impl Buffer {
     fn new(num_variables: usize, num_stages: usize) -> Self {
         let zero1 = Array1::<f64>::zeros(num_variables);
         let zero2 = Array2::<f64>::zeros((num_stages, num_variables));
 
-        _TempArrays {
+        Buffer {
             k: zero2.clone(),
             y: zero1.clone(),
             f_now: zero1.clone(),
@@ -192,7 +188,7 @@ where
     table: tables::ButcherTableau,
     max_step_size: f64,
     _num_variables: usize,
-    _t: _TempArrays,
+    buffer: Buffer,
 }
 
 ///
@@ -275,7 +271,7 @@ where
         // Set all buffer values to zero, except for f_now. Need a local scope
         // to drop mutable borrow.
         {
-            let buffer = &mut self._t;
+            let buffer = &mut self.buffer;
 
             // Store k[i] values in a vector, initialize with the first value 
             (self.f)(&self.t, self.y.view(), buffer.f_now.view_mut());
@@ -315,7 +311,7 @@ where
             
             // Start local scole for mutable borrow of buffer
             {   
-                let buffer = &mut self._t;
+                let buffer = &mut self.buffer;
 
                 buffer.sum.fill(0.);
 
@@ -360,7 +356,7 @@ where
 
             } // buffer mutable borrow is dropped
                 
-            error_norm = self.calc_error_norm(self._t.y_next.view(), self._t.y_err.view());
+            error_norm = self.calc_error_norm(self.buffer.y_next.view(), self.buffer.y_err.view());
 
             // Scale step-size based on the norm of the error between the result and the error
             // estimator.
@@ -376,7 +372,7 @@ where
         }
 
         self.step = step;
-        self.y = self._t.y_next.clone();
+        self.y = self.buffer.y_next.clone();
         self.t = t_next;
 
         Some((self.t, self.y.clone()))
@@ -386,7 +382,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::{array};
+    use ndarray::{array, ArrayView1, ArrayViewMut1};
 
     fn brusselator(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
         result[0] = 1. + y[0].powi(2) * y[1] - 4. * y[0];
@@ -395,13 +391,36 @@ mod tests {
     }
 
     #[test]
-    fn test_brusselator_fixed() -> Result<(), String> {
+    fn test_brusselator_function() -> Result<(), BuilderError> {
         let t0: f64 = 0.;
         let y0 = array![1.5, 3.];
         let absolute_tol = array![1.0e-4, 1.0e-4];
         let relative_tol = array![1.0e-4, 1.0e-4];
 
         let integrator = RungeKutta::builder(brusselator, |t, _| *t > 40.)
+            .initial_condition(t0, y0)
+            .initial_step_size(0.025)
+            .method("fehlberg", true)
+            .tolerances(absolute_tol, relative_tol)
+            .set_max_step_size(0.25)
+            .build()?;
+
+        for _item in integrator {}
+        Ok(())
+    }
+
+    #[test]
+    fn test_brusselator_closure() -> Result<(), BuilderError> {
+        let t0: f64 = 0.;
+        let y0 = array![1.5, 3.];
+        let absolute_tol = array![1.0e-4, 1.0e-4];
+        let relative_tol = array![1.0e-4, 1.0e-4];
+        
+        let brusselator_closure = |t: &f64, y: ArrayView1<f64>, result: ArrayViewMut1<f64>| {
+            brusselator(t, y, result);
+        };
+
+        let integrator = RungeKutta::builder(brusselator_closure, |t, _| *t > 40.)
             .initial_condition(t0, y0)
             .initial_step_size(0.025)
             .method("fehlberg", true)

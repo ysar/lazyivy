@@ -29,17 +29,17 @@ pub struct ButcherTableau {
 }
 
 /// Get Runge-Kutta coefficients for some method asked for.
-pub fn get_rungekutta_coefficients(method_in: &str) -> Result<ButcherTableau, String> {
+pub fn get_rungekutta_coefficients(method_in: &str) -> Option<ButcherTableau> {
     let method = method_in.to_ascii_lowercase();
 
     match method.as_str() {
-        "euler" => Ok(get_euler_coefficients()),
-        "ralston" => Ok(get_ralston_coefficients()),
-        "hueneuler" => Ok(get_hueneuler_coefficients()),
-        "bogackishampine" => Ok(get_bogackishampine_coefficients()),
-        "fehlberg" => Ok(get_fehlberg_coefficients()),
-        "dormandprince" => Ok(get_dormandprince_coefficients()),
-        _ => Err(format!("Runge-Kutta method -{:}- not found.", method).to_string()),
+        "euler" => Some(get_euler_coefficients()),
+        "ralston" => Some(get_ralston_coefficients()),
+        "hueneuler" => Some(get_hueneuler_coefficients()),
+        "bogackishampine" => Some(get_bogackishampine_coefficients()),
+        "fehlberg" => Some(get_fehlberg_coefficients()),
+        "dormandprince" => Some(get_dormandprince_coefficients()),
+        _ => None,
     }
 }
 
