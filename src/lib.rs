@@ -36,7 +36,7 @@
 //! the provided builder method. Here is an example
 //! showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator).  
 //! ```rust
-//! use lazyivy::RungeKutta;
+//! use lazyivy::{RungeKutta, RungeKuttaMethod};
 //! use ndarray::{Array, ArrayView1, ArrayViewMut1};
 //!  
 //!  
@@ -56,7 +56,7 @@
 //!     let mut integrator = RungeKutta::builder(brusselator, |t, _| *t > 40.)
 //!         .initial_condition(t0, y0)
 //!         .initial_step_size(0.025)
-//!         .method("fehlberg", true)
+//!         .method(RungeKuttaMethod::Fehlberg, true)
 //!         .tolerances(absolute_tol, relative_tol)
 //!         .set_max_step_size(0.25)
 //!         .build()
@@ -116,3 +116,4 @@ pub mod explicit;
 
 // Re-export some useful structs
 pub use crate::explicit::RungeKutta;
+pub use crate::tables::RungeKuttaMethod;

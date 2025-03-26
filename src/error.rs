@@ -8,10 +8,6 @@ pub enum BuilderError {
     InconsistentSize(String),
 
     /// Error type for methods for which adaptive step-size has not been implemented.
-    #[error("Adaptive step-size not implemented for method : {0}")]
-    AdaptiveNotImplemented(String),
-
-    /// Error type for an unknown Runge-Kutta method.
-    #[error("Unknown Runge-Kutta method: {0}")]
-    UnknownRungeKuttaMethod(String),
+    #[error("Adaptive step-size not implemented for selected Runge-Kutta method.")]
+    AdaptiveNotImplemented,
 }

@@ -1,4 +1,4 @@
-use lazyivy::RungeKutta;
+use lazyivy::{RungeKutta, RungeKuttaMethod};
 use ndarray::{array, ArrayView1, ArrayViewMut1};
 use std::fs::File;
 use std::io::Write;
@@ -18,7 +18,7 @@ fn main() {
     let integrator = RungeKutta::builder(lorentz_attractor, |t, _| *t > 30.)
         .initial_condition(t0, y0)
         .initial_step_size(0.001)
-        .method("dormandprince", true)
+        .method(RungeKuttaMethod::DormandPrince, true)
         .tolerances(absolute_tol, relative_tol)
         .set_max_step_size(0.01)
         .build()

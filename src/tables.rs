@@ -28,18 +28,34 @@ pub struct ButcherTableau {
     pub b2: Array1<f64>, // b* in literature
 }
 
-/// Get Runge-Kutta coefficients for some method asked for.
-pub fn get_rungekutta_coefficients(method_in: &str) -> Option<ButcherTableau> {
-    let method = method_in.to_ascii_lowercase();
+/// Enum for different Runge-Kutta methods that are supported.
+pub enum RungeKuttaMethod {
+    /// The Euler method - O(h^1).
+    Euler,
+    /// The Ralston method - O(h^2).
+    Ralston,
+    /// The Huen method O(h^2) with the Euler method O(h^1) as the error estimator.
+    HuenEuler,
+    /// The Bogacki-Shampine scheme which is O(h^3) with an error-estimator of
+    /// order O(h^2).
+    BogackiShampine,
+    /// The Fehlberg method is O(h^4) with an error-estimator of order O(h^5).
+    Fehlberg,
+    /// The Dormand-Prince method is O(h^5). The error-estimator is O(h^5), which means that it
+    /// provides the error on a O(h^4) scheme.  However, the higher-order method is used to
+    /// continue the integration, unlike the Fehlberg scheme.
+    DormandPrince,
+}
 
-    match method.as_str() {
-        "euler" => Some(get_euler_coefficients()),
-        "ralston" => Some(get_ralston_coefficients()),
-        "hueneuler" => Some(get_hueneuler_coefficients()),
-        "bogackishampine" => Some(get_bogackishampine_coefficients()),
-        "fehlberg" => Some(get_fehlberg_coefficients()),
-        "dormandprince" => Some(get_dormandprince_coefficients()),
-        _ => None,
+/// Get Runge-Kutta coefficients for some method asked for.
+pub fn get_rungekutta_coefficients(method: &RungeKuttaMethod) -> ButcherTableau {
+    match method {
+        RungeKuttaMethod::Euler => get_euler_coefficients(),
+        RungeKuttaMethod::Ralston => get_ralston_coefficients(),
+        RungeKuttaMethod::HuenEuler => get_hueneuler_coefficients(),
+        RungeKuttaMethod::BogackiShampine => get_bogackishampine_coefficients(),
+        RungeKuttaMethod::Fehlberg => get_fehlberg_coefficients(),
+        RungeKuttaMethod::DormandPrince => get_dormandprince_coefficients(),
     }
 }
 

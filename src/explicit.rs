@@ -1,10 +1,10 @@
 use crate::error::BuilderError;
-use crate::tables;
+use crate::tables::{get_rungekutta_coefficients, ButcherTableau, RungeKuttaMethod};
 
 use ndarray::{array, s, Array1, Array2, ArrayView1, ArrayViewMut1};
 
-/// Builder struct for `RungeKutta`. It can be called directly or via `RungeKutta::builder()`. Like
-/// `RungeKutta`, it is generic over the evaluation function and predicate.
+/// Builder struct for [RungeKutta]. It can be called directly or via [RungeKutta::builder()]. Like
+/// [RungeKutta], it is generic over the evaluation function and predicate.
 pub struct RungeKuttaBuilder<F, P>
 where
     F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
@@ -19,7 +19,7 @@ where
     absolute_tol: Array1<f64>,
     do_adaptive: bool,
     max_step_size: f64,
-    method: String,
+    method: RungeKuttaMethod,
 }
 
 impl<F, P> RungeKuttaBuilder<F, P>
@@ -27,9 +27,9 @@ where
     F: Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>),
     P: Fn(&f64, ArrayView1<f64>) -> bool,
 {
-    /// Create a new `RungeKuttaBuilder` instance.
+    /// Create a new [RungeKuttaBuilder] instance.
     pub fn new(f: F, predicate: P) -> Self {
-        // Create a default RungeKuttaBuilder. Cannot do this via the Default trait because of
+        // Create a default [RungeKuttaBuilder]. Cannot do this via the Default trait because of
         // generics.
         RungeKuttaBuilder {
             t: 0.,
@@ -41,7 +41,7 @@ where
             absolute_tol: array![1.0e-4],
             do_adaptive: false,
             max_step_size: f64::INFINITY,
-            method: "Euler".to_string(),
+            method: RungeKuttaMethod::Euler,
         }
     }
 
@@ -58,10 +58,9 @@ where
         self
     }
 
-    /// Sets the Runge-Kutta method to be used. Options are :
-    /// `euler`, `ralston`, `hueneuler`, `bogackishampine`, `fehlberg`, `dormandprince`.
-    pub fn method(mut self, method: &str, do_adaptive: bool) -> Self {
-        self.method = method.to_string();
+    /// Sets the Runge-Kutta method to be used. Options are in the [RungeKuttaMethod] enum.
+    pub fn method(mut self, method: RungeKuttaMethod, do_adaptive: bool) -> Self {
+        self.method = method;
         self.do_adaptive = do_adaptive;
         self
     }
@@ -88,15 +87,11 @@ where
         self
     }
 
-    /// Consumes the `RungeKuttaBuilder` and returns a `Result` containing the `RungeKutta` struct.
+    /// Consumes the [RungeKuttaBuilder] and returns a [Result] containing the [RungeKutta] struct.
     /// This needs to be called at the very end of the construction chain.
     pub fn build(self) -> Result<RungeKutta<F, P>, BuilderError> {
         // Get the Runge-Kutta table of coefficients.
-        let table = tables::get_rungekutta_coefficients(&self.method);
-        if table.is_none() {
-            return Err(BuilderError::UnknownRungeKuttaMethod(self.method));
-        }
-        let table = table.unwrap();
+        let table = get_rungekutta_coefficients(&self.method);
 
         let num_variables: usize = self.y.len();
 
@@ -114,9 +109,10 @@ where
             return Err(BuilderError::InconsistentSize("Tolerances".to_string()));
         }
 
-        match self.method.as_str() {
-            "euler" => return Err(BuilderError::AdaptiveNotImplemented("euler".to_string())),
-            "ralston" => return Err(BuilderError::AdaptiveNotImplemented("ralston".to_string())),
+        match self.method {
+            RungeKuttaMethod::Euler | RungeKuttaMethod::Ralston => {
+                return Err(BuilderError::AdaptiveNotImplemented)
+            }
             _ => {}
         }
 
@@ -185,7 +181,7 @@ where
     relative_tol: Array1<f64>,
     absolute_tol: Array1<f64>,
     do_adaptive: bool,
-    table: tables::ButcherTableau,
+    table: ButcherTableau,
     max_step_size: f64,
     _num_variables: usize,
     buffer: Buffer,
@@ -395,7 +391,7 @@ mod tests {
         let integrator = RungeKutta::builder(brusselator, |t, _| *t > 40.)
             .initial_condition(t0, y0)
             .initial_step_size(0.025)
-            .method("fehlberg", true)
+            .method(RungeKuttaMethod::Fehlberg, true)
             .tolerances(absolute_tol, relative_tol)
             .set_max_step_size(0.25)
             .build()?;
@@ -418,7 +414,7 @@ mod tests {
         let integrator = RungeKutta::builder(brusselator_closure, |t, _| *t > 40.)
             .initial_condition(t0, y0)
             .initial_step_size(0.025)
-            .method("fehlberg", true)
+            .method(RungeKuttaMethod::Fehlberg, true)
             .tolerances(absolute_tol, relative_tol)
             .set_max_step_size(0.25)
             .build()?;
