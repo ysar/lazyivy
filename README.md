@@ -51,7 +51,7 @@ showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator
 ```
 
 ```rust
-use lazyivy::RungeKutta;
+use lazyivy::{RungeKutta, RungeKuttaMethod};
 use ndarray::{array, ArrayView1, ArrayViewMut1};
  
  
@@ -75,7 +75,7 @@ fn main() {
     let mut integrator = RungeKutta::builder(brusselator, |t, _| *t > 40.)
         .initial_condition(t0, y0)
         .initial_step_size(0.025)
-        .method("dormandprince", true)   // `true` for adaptive step-size
+        .method(RungeKuttaMethod::DormandPrince, true)   // `true` for adaptive step-size
         .tolerances(absolute_tol, relative_tol)
         .set_max_step_size(0.25)
         .build()
