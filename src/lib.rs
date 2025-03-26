@@ -4,8 +4,7 @@
 //! `dY/dt = F(t, Y)` using Runge-Kutta methods.
 //!
 //! The algorithms are implemented using the struct [`RungeKutta`] that implements
-//! [`Iterator`]. The following Runge-Kutta methods are implemented currently, and
-//! more will be added in the near future.  
+//! [`Iterator`]. The following Runge-Kutta methods are supported.
 //! - Euler 1
 //! - Ralston 2
 //! - Huen-Euler 2(1)
@@ -15,7 +14,7 @@
 //!
 //! Where `p` is the order of the method and `p*` is the order of the error estimator step.
 //!
-//! ## Lazy integration  
+//! ## Lazy Integration  
 //!
 //! [`RungeKutta`] implements the `Iterator` trait. Each `.next()` call
 //! advances the iteration to the next Runge-Kutta *step* and returns a tuple `(t, y)`, where `t`
@@ -31,7 +30,7 @@
 //! use it in a `for` loop and implement you own logic for modifying the step-size or customizing
 //! the stop condition.
 //!
-//! ## Usage:
+//! ## Usage
 //!
 //! After adding lazyivy to `Cargo.toml`, create an initial value problem using
 //! the provided builder method. Here is an example

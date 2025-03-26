@@ -9,8 +9,7 @@ the form `dY/dt = F(t, Y)` using Runge-Kutta methods, where `Y` is a vector
 and `t` is a scalar.
 
 The algorithms are implemented using the struct `RungeKutta`, that implements 
-`Iterator`. The following Runge-Kutta methods are implemented currently, and 
-more will be added in the near future.  
+`Iterator`. The following Runge-Kutta methods are supported.  
 - Euler 1
 - Ralston 2
 - Huen-Euler 2(1)
@@ -21,7 +20,8 @@ more will be added in the near future.
 (`p` is the order of the method and `(p*)` is the order of the embedded 
 error estimator, if it is present.)
 
-## Lazy integration
+## Lazy Integration
+
 `RungeKutta` implements the `Iterator` trait. Each `.next()` call advances the 
 iteration to the next Runge-Kutta *step* and returns a tuple `(t, Y)`, where 
 `t` is the dependent variable and `Y` is `Array1<f64>`. 
@@ -38,12 +38,10 @@ iterator with another, etc. You may also choose to use it in a `for` loop and
 implement you own logic for modifying the step-size or customizing the stop 
 condition.
 
-**API is unstable. It is active and under development.**
-
-## Usage: 
+## Usage
 
 After adding lazyivy to `Cargo.toml`, create an initial value problem using 
-the provided builder. Here is an example 
+the provided builder.  Here is an example 
 showing how to solve the [Brusselator](https://en.wikipedia.org/wiki/Brusselator). 
 
 ```math 
@@ -98,7 +96,7 @@ The result when plotted looks like this,
 
 Likewise, you can do the same for other problems, e.g. for the 
 [Lorenz attractor](https://en.wikipedia.org/wiki/Lorenz_system),
-define the evaluation function
+define the evaluation function - 
 
 ```rust
 fn lorentz_attractor(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
@@ -154,51 +152,3 @@ Here is a plot showing the Lorenz attractor result.
 
 ![Lorenz Attractor](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/lorenzattractor.png)
 
-# Mutating in-place (as of version 0.5.0)
-In the above example for the Lorenz attractor, I created a new array using the 
-`array!` macro. However, I recommend in practice that you use evaluation 
-functions that mutate a `result` array that is passed to the function. 
-
-For example, the same example could take the form - 
-
-```rust
-fn lorentz_attractor(
-    x: f64, 
-    y: f64, 
-    z: f64, 
-    sigma: f64, 
-    beta: f64,
-    rho: f64,
-    result: ArrayViewMut1<f64>,   // Mutate this argument in-place.
-    ) {
-    result[0] = sigma * (y - x);
-    result[1] = x * (rho - z) - y;
-    result[2] = x * y - beta * z;
-}
-```
-And then you can wrap this in a closure with the appropriate signature.
-
-```rust
-let sigma = 10.;
-let beta = 8. / 3.;
-let rho: 28.;
-
-let eval_closure = |_t, y, result| {    // here result is mut
-    lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho, result);
-    //                                                    ^-----
-    //                                       Added result as an argument
-};
-```
-This way you will avoid an allocation each time the function is called. 
-
-To facilitate this change, as of v0.5.0, the signature of the generic parameter `F`
-that was previously `Fn(&f64, &Array1<f64>) -> Array1<f64>` was changed to 
-`Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)`. 
-
-Since Rust does not allow for mutiple mutable references, this change does mean 
-that `RungeKutta` is no longer thread-safe. But, this should be fine because 
-Runge-Kutta iterations are sequential and cannot easily be multi-threaded. 
-
-## To-do:
-- [ ] Add better tests.
-- [ ] Benchmark.
