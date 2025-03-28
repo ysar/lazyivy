@@ -109,12 +109,14 @@ where
             return Err(BuilderError::InconsistentSize("Tolerances".to_string()));
         }
 
-        match self.method {
-            RungeKuttaMethod::Euler | RungeKuttaMethod::Ralston => {
-                return Err(BuilderError::AdaptiveNotImplemented)
+        if self.do_adaptive {
+            match self.method {
+                RungeKuttaMethod::Euler | RungeKuttaMethod::Ralston => {
+                    return Err(BuilderError::AdaptiveNotImplemented)
+                }
+                _ => {}
             }
-            _ => {}
-        }
+        };
 
         // Pre-allocate some arrays used in the iterations. Cloning here is fine, we are only doing
         // it once at the beginning.

@@ -1,6 +1,6 @@
 [package]
 name = "lazyivy"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 license = "BSD-2-Clause-Patent"
 description = "Lazy Runge-Kutta integration for initial value problems."
@@ -8,6 +8,7 @@ readme = "README.md"
 repository = "https://github.com/ysar/lazyivy"
 exclude = [
     "examples/*",
+    "benches/*",
 ]
 keywords = ["runge-kutta", "ode", "integration", "lazy-evaluation"]
 categories = ["mathematics", "science", "aerospace"]
@@ -18,3 +19,11 @@ categories = ["mathematics", "science", "aerospace"]
 [dependencies]
 ndarray = "0.15.6"
 thiserror = "1.0.63"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+paste = "1.0.15"
+
+[[bench]]
+name = "rungekutta"
+harness = false
