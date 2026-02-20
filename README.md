@@ -94,27 +94,30 @@ fn main() {
 The result when plotted looks like this, 
 ![Brusselator](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/brusselator.png)
 
-Likewise, you can do the same for other problems, e.g. for the 
-[Lorenz attractor](https://en.wikipedia.org/wiki/Lorenz_system),
-define the evaluation function - 
+## Wrapping functions and closures
+
+You can use closures to capture the environment and wrap your evaluation. 
+That is, if you have a function with a different signature, you cannot pass this to 
+`RungeKutta::builder()` directly. But you can wrap this into a closure.
+
+This works because closures that do not modify their environments can coerce to 
+`Fn`. Hence, this pattern will not work for closures that mutate their 
+environments. In general, you can use any evaluation function and stop condition,
+but they must be `Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)` and 
+`Fn(&f64, ArrayView1<f64>) -> bool`, respectively.
+
+The use of closures to wrap environment variables is demonstrated below for the 
+[Lorenz attractor](https://en.wikipedia.org/wiki/Lorenz_system). 
 
 ```rust
-fn lorentz_attractor(_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>) {
-    result[0] = 10. * (y[1] - y[0]);
-    result[1] = y[0] * (28. - y[2]) - y[1];
-    result[2] = y[0] * y[1] - 8. / 3. * y[2];
-}
-```
+use lazyivy::{RungeKutta, RungeKuttaMethod};
+use ndarray::{array, Array1, ArrayView1, ArrayViewMut1};
 
-You can also use closures to capture the environment and wrap your evaluation. 
-That is, if you have a function - 
-
-```rust
 fn lorentz_attractor(
-    x: f64, 
-    y: f64, 
-    z: f64, 
-    sigma: f64, 
+    x: f64,
+    y: f64,
+    z: f64,
+    sigma: f64,
     beta: f64,
     rho: f64
     ) -> Array1<f64> {
@@ -124,31 +127,35 @@ fn lorentz_attractor(
         x * y - beta * z,
     ]
 }
+
+fn main() {
+
+    let sigma = 10.;
+    let beta = 8. / 3.;
+    let rho = 28.;
+
+    let eval_closure = |_t: &f64, y: ArrayView1<f64>, mut result: ArrayViewMut1<f64>| {
+        // Closure captures the environment and wraps the function signature
+        result.assign(&(lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho)));
+    };
+    
+    let t0: f64 = 0.;
+    let y0 = array![2., 1., 1.];
+    let absolute_tol = array![1.0e-4, 1.0e-4, 1.0e-4];
+    let relative_tol = array![1.0e-4, 1.0e-4, 1.0e-4];
+
+    let integrator = RungeKutta::builder(eval_closure, |t, _| *t > 30.)
+        .initial_condition(t0, y0)
+        .initial_step_size(0.001)
+        .method(RungeKuttaMethod::DormandPrince, true)
+        .tolerances(absolute_tol, relative_tol)
+        .set_max_step_size(0.01)
+        .build()
+        .unwrap();
+
+    for item in integrator {}
+}
 ```
-you cannot pass this to `RungeKutta::builder()` directly. But you can wrap this 
-into a closure. E.g.,
 
-```rust
-let sigma = 10.;
-let beta = 8. / 3.;
-let rho: 28.;
-
-let eval_closure = |_t, y, result| {    // here result is mut
-    // Closure captures the environment and wraps the function signature
-    result = lorentz_attractor(y[0], y[1], y[2], sigma, beta, rho);
-};
-
-let integrator = RungeKutta::builder(eval_closure, |t, _| *t > 20.)
-    ... // other parameters
-    .build();
-```
-This works because closures that do not modify their environments can coerce to 
-`Fn`. Hence, this pattern will not work for closures that mutate their 
-environments. In general, you can use any evaluation function and stop condition,
-but they must be `Fn(&f64, ArrayView1<f64>, ArrayViewMut1<f64>)` and 
-`Fn(&f64, ArrayView1<f64>) -> bool`, respectively.
-
-Here is a plot showing the Lorenz attractor result.
-
+The result would look something like this.
 ![Lorenz Attractor](https://raw.githubusercontent.com/ysar/lazyivy/main/examples/images/lorenzattractor.png)
-
