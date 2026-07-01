@@ -3,20 +3,8 @@ use ndarray::{array, Array1, ArrayView1, ArrayViewMut1};
 use std::fs::File;
 use std::io::Write;
 
-
-fn lorentz_attractor(
-    x: f64,
-    y: f64,
-    z: f64,
-    sigma: f64,
-    beta: f64,
-    rho: f64
-    ) -> Array1<f64> {
-    array![
-        sigma * (y - x),
-        x * (rho - z) - y,
-        x * y - beta * z,
-    ]
+fn lorentz_attractor(x: f64, y: f64, z: f64, sigma: f64, beta: f64, rho: f64) -> Array1<f64> {
+    array![sigma * (y - x), x * (rho - z) - y, x * y - beta * z,]
 }
 
 fn main() {

@@ -38,7 +38,14 @@ macro_rules! bench_rungekutta_func {
     };
 }
 
-bench_rungekutta_func!(Euler, Ralston, HuenEuler, BogackiShampine, Fehlberg, DormandPrince);
+bench_rungekutta_func!(
+    Euler,
+    Ralston,
+    HuenEuler,
+    BogackiShampine,
+    Fehlberg,
+    DormandPrince
+);
 
 fn criterion_benchmark_rungekutta(c: &mut Criterion) {
     let mut group = c.benchmark_group("Runge-Kutta");
